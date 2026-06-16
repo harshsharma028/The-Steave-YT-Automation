@@ -1,0 +1,33 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+venv/
+ENV/
+env/
+
+# Logs
+pipeline.log
+*.log
+
+# Project Outputs (generated video assets, audio, images, blueprint states)
+projects/
+testing_artifacts/
+temp_script_input.txt
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# IDE configurations
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
