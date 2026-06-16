@@ -17,7 +17,8 @@ VIDEO_HEIGHT = 1080
 ASPECT_RATIO = "16:9"
 
 # Whisper settings
-WHISPER_MODEL = "base"
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
+
 
 # Image Generation Pricing (based on 1K resolution equivalent)
 # Source: Gemini API Pricing (adjust as per latest Google pricing)
