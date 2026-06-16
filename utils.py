@@ -44,10 +44,13 @@ def slugify(text):
 
 def create_project_folder(script_title, base_dir="projects"):
     """
-    Creates a timestamped project folder to store all generated assets.
+    Creates a timestamped project folder nested inside a daily date folder
+    (e.g., YYYY-MM-DD) to store all generated assets.
     """
+    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     folder_name = f"{slugify(script_title)}_{timestamp}"
-    path = os.path.join(base_dir, folder_name)
+    path = os.path.join(base_dir, today_str, folder_name)
     os.makedirs(path, exist_ok=True)
     return path
+
