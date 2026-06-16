@@ -15,19 +15,18 @@ def setup_logger(name):
     
     # Only add handlers if they don't already exist to prevent duplicate logs
     if not logger.handlers:
-        # Formatter with newlines for visual spacing
-        formatter = logging.Formatter(
-            '\n[%(asctime)s] === %(name)s ===\n%(levelname)s: %(message)s'
-        )
+        # Create distinct formatters for console (clean) and file (detailed) logging
+        console_formatter = logging.Formatter('[%(name)s] %(levelname)s: %(message)s')
+        file_formatter = logging.Formatter('\n[%(asctime)s] === %(name)s ===\n%(levelname)s: %(message)s')
         
         # Console Handler
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
+        console_handler.setFormatter(console_formatter)
         logger.addHandler(console_handler)
         
         # File Handler
         file_handler = logging.FileHandler("pipeline.log", encoding='utf-8')
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
         
     return logger
