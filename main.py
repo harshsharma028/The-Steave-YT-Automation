@@ -1,6 +1,10 @@
 import os
 import sys
+import threading
+import time
 import json
+
+
 import subprocess
 import logging
 from script_analyzer import analyze_script
@@ -152,9 +156,70 @@ def run_interactive_pipeline(input_path):
     # PHASE 4: INTERACTIVE IMAGE GENERATION
     # ---------------------------------------------------------
     logger.info("\n--- PHASE 4: Interactive Image Generation ---")
+    
+    background_tasks = {}
+
+    def check_background_tasks():
+        """Checks for completed background tasks and processes their results."""
+        completed_indices = []
+        for idx, task in background_tasks.items():
+            if not task["thread"].is_alive():
+                completed_indices.append(idx)
+                res_container = task["result"]
+                segment = task["segment"]
+                if res_container:
+                    success, cost_usd = res_container[0]
+                    if success:
+                        segment["image_generated"] = True
+                        segment["image_cost_usd"] = cost_usd
+                        save_state(state_path, state)
+                        print(f"\n[BACKGROUND SUCCESS] Image generation finished for segment {idx+1}: {segment['image_filename']} (Estimated Cost: ${cost_usd:.4f})")
+                    else:
+                        print(f"\n[BACKGROUND FAILED] Image generation failed for segment {idx+1}.")
+                else:
+                    print(f"\n[BACKGROUND FAILED] Image generation failed or was aborted for segment {idx+1}.")
+        for idx in completed_indices:
+            del background_tasks[idx]
+
     for i, segment in enumerate(state["segments"]):
+        # Periodically check on any finished background tasks
+        check_background_tasks()
+
+        # Recovery check: If the image file already exists on disk, mark it as generated to prevent duplicate billing
+        img_path = os.path.join(project_folder, segment["image_filename"])
+        if os.path.exists(img_path) and not segment.get("image_generated"):
+            segment["image_generated"] = True
+            save_state(state_path, state)
+            print(f"  [RECOVERY] Found existing image file for segment {i+1} on disk ({segment['image_filename']}). Marking as generated to save API cost.")
+
         if segment.get("image_generated"):
             continue
+
+        # If a background task is already running for this segment, skip and wait up to 5 min
+        if i in background_tasks:
+            print(f"\n[WAIT] Background image generation for segment {i+1} is currently running. Waiting up to 5 minutes...")
+            task = background_tasks[i]
+            
+            waited = 0
+            timeout_limit = 300
+            check_interval = 10
+            while task["thread"].is_alive() and waited < timeout_limit:
+                time.sleep(check_interval)
+                waited += check_interval
+                check_background_tasks()
+                if waited % 60 == 0:
+                    print(f"  [STATUS] Still waiting for segment {i+1} image generation... ({waited // 60} min elapsed)")
+                    active_tasks = [f"Segment {k+1}" for k in background_tasks if k != i]
+                    if active_tasks:
+                        print(f"  [STATUS] Other active background processes: {', '.join(active_tasks)}")
+
+            if task["thread"].is_alive():
+                print(f"  Still running in the background. Moving to the next segment...")
+                continue
+            else:
+                check_background_tasks()
+                if segment.get("image_generated"):
+                    continue
 
         print(f"\n======================================")
         print(f"Segment {i+1} / {len(state['segments'])}")
@@ -172,27 +237,95 @@ def run_interactive_pipeline(input_path):
                 save_state(state_path, state)
                 print("Prompt updated.")
         
-        print("\nGenerating image... Please wait.")
+        print("\nSpawning image generation thread... Please wait.")
         img_path = os.path.join(project_folder, segment["image_filename"])
-        success, cost_usd = generate_image(segment['image_prompt'], img_path)
-        if success:
-            segment['image_generated'] = True
-            segment['image_cost_usd'] = cost_usd # Store cost
-            save_state(state_path, state)
-
-            print(f"\n[SUCCESS] Image saved: {segment['image_filename']} (Estimated Cost: ${cost_usd:.4f})")
-            proceed = input("Check the image in the project folder. Type 'next' to continue, or 'exit' to pause: ").strip().lower()
-            if proceed == 'exit':
-                print(f"Pipeline paused at segment {i+1}. Run option 2 later to resume.")
-                sys.exit(0)
+        
+        result_container = []
+        gen_thread = threading.Thread(
+            target=generate_image,
+            args=(segment['image_prompt'], img_path, result_container, False)  # verbose=False to keep background thread quiet
+        )
+        
+        task_data = {
+            "thread": gen_thread,
+            "segment": segment,
+            "result": result_container
+        }
+        
+        gen_thread.start()
+        
+        # Wait up to 5 minutes with 1-minute status updates
+        print("Waiting for image generation to complete...")
+        waited = 0
+        timeout_limit = 300
+        check_interval = 10
+        while gen_thread.is_alive() and waited < timeout_limit:
+            time.sleep(check_interval)
+            waited += check_interval
+            check_background_tasks()
+            if waited % 60 == 0:
+                print(f"  [STATUS] Still waiting for segment {i+1} image generation... ({waited // 60} min elapsed)")
+                active_tasks = [f"Segment {k+1}" for k in background_tasks]
+                if active_tasks:
+                    print(f"  [STATUS] Active background processes: {', '.join(active_tasks)}")
+        
+        if gen_thread.is_alive():
+            # If it takes more than 5 minutes, move to the next image and keep it running in the background
+            print(f"\n[BACKGROUNDED] Segment {i+1} is taking longer than 5 minutes. Backgrounding task and proceeding to the next segment...")
+            background_tasks[i] = task_data
         else:
-            print("Failed to generate image. Please restart the pipeline to retry.")
-            sys.exit(1)
+            # Check results of the wait
+            if result_container:
+                success, cost_usd = result_container[0]
+                if success:
+                    segment['image_generated'] = True
+                    segment['image_cost_usd'] = cost_usd # Store cost
+                    save_state(state_path, state)
+                    print(f"\n[SUCCESS] Image saved: {segment['image_filename']} (Estimated Cost: ${cost_usd:.4f})")
+                    
+                    proceed = input("Check the image in the project folder. Type 'next' to continue, or 'exit' to pause: ").strip().lower()
+                    if proceed == 'exit':
+                        if background_tasks:
+                            print("\nWarning: Some background image tasks are still running. Exiting will abort their updates to the state, though the files will still save if they complete.")
+                        print(f"Pipeline paused at segment {i+1}. Run option 2 later to resume.")
+                        sys.exit(0)
+                else:
+                    print(f"Failed to generate image for segment {i+1} on this attempt. You can retry it when resuming or running the script again.")
+            else:
+                print(f"Generation did not complete successfully for segment {i+1}.")
 
     # ---------------------------------------------------------
     # PHASE 5: FINAL STITCHING VERIFICATION
     # ---------------------------------------------------------
     logger.info("\n--- PHASE 5: Final Video Stitching ---")
+    
+    # 1. Sync any remaining background threads before we proceed
+    if background_tasks:
+        print(f"\n[SYNC] Waiting for {len(background_tasks)} outstanding background image generation tasks to complete...")
+        waited = 0
+        check_interval = 10
+        while background_tasks:
+            time.sleep(check_interval)
+            waited += check_interval
+            check_background_tasks()
+            if waited % 60 == 0:
+                active_tasks = [f"Segment {k+1}" for k in background_tasks]
+                print(f"  [STATUS] Still waiting for: {', '.join(active_tasks)} ({waited // 60} min elapsed)")
+
+    # 2. Safety check: verify if ALL images have been successfully generated
+    missing_images = []
+    for idx, seg in enumerate(state["segments"]):
+        if not seg.get("image_generated"):
+            missing_images.append(idx + 1)
+
+    if missing_images:
+        print(f"\n[ERROR] Video generation cannot proceed because some images are not generated:")
+        for num in missing_images:
+            print(f" - Segment {num}: \"{state['segments'][num-1]['text'][:60]}...\"")
+        print("\nPlease run Option 2 to resume the project and regenerate/complete these missing images first.")
+        return
+
+    # Proceed with stitching if all images are ready
     if not state.get("video_generated"):
         final_check = input("\nAll segments are ready! Do you want to stitch the final video now? (yes/no): ").strip().lower()
         if final_check in ['yes', 'y']:
@@ -211,6 +344,8 @@ def run_interactive_pipeline(input_path):
             print(f"Paused before stitching. Use Option 2 to finish later.")
     else:
         logger.info("Video already exists for this project.")
+
+
 
 if __name__ == "__main__":
     logging.getLogger().handlers.clear()
