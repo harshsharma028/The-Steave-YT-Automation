@@ -29,7 +29,7 @@ def load_state(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def run_interactive_pipeline(input_path):
+def run_interactive_pipeline(input_path, video_format="long form"):
     logger.info("\n===========================================")
     logger.info("   INTERACTIVE VIDEO GENERATION PIPELINE   ")
     logger.info("===========================================")
@@ -47,6 +47,8 @@ def run_interactive_pipeline(input_path):
         if os.path.exists(state_path):
             logger.info(f"Resuming project: {project_folder}")
             state = load_state(state_path)
+            # Retrieve video_format from state, defaulting to "long form" if missing (for backwards compatibility)
+            video_format = state.get("video_format", "long form")
         else:
             logger.error("No blueprint.json found in the provided folder.")
             return
@@ -64,7 +66,8 @@ def run_interactive_pipeline(input_path):
             return
             
         title = state.get("title", "Untitled Project")
-        project_folder = create_project_folder(title, OUTPUT_DIR)
+        state["video_format"] = video_format
+        project_folder = create_project_folder(title, OUTPUT_DIR, video_format)
         
         # Track if segments have been broken into sub-scenes yet
         state["segments_flattened"] = False
@@ -155,7 +158,7 @@ def run_interactive_pipeline(input_path):
         
         subprocess.run(["ffmpeg", "-f", "concat", "-safe", "0", "-i", concat_list_path, "-c", "copy", "-y", audio_path], capture_output=True)
         
-        if generate_subtitles(audio_path, subtitle_path):
+        if generate_subtitles(audio_path, subtitle_path, video_format=video_format):
             state["subtitles_generated"] = True
             save_state(state_path, state)
         else:
@@ -169,6 +172,12 @@ def run_interactive_pipeline(input_path):
     print("PHASE 4: INTERACTIVE IMAGE GENERATION")
     print("="*60)
     logger.info("\n--- PHASE 4: Interactive Image Generation ---")
+    
+    # Check if there are any ungenerated images
+    has_ungenerated = any(not seg.get("image_generated") for seg in state["segments"])
+    manual_verify = True
+    if has_ungenerated:
+        manual_verify = input("\nDo you want to manually verify each image prompt? (yes/no): ").strip().lower() in ['yes', 'y']
     
     background_tasks = {}
 
@@ -214,7 +223,10 @@ def run_interactive_pipeline(input_path):
 
         # If a background task is already running for this segment, skip and wait up to 5 min
         if i in background_tasks:
-            print(f"\n[WAIT] Background image generation for Segment {i+1} is currently running. Waiting up to 5 minutes...")
+            if manual_verify:
+                print(f"\n[WAIT] Background image generation for Segment {i+1} is currently running. Waiting up to 5 minutes...")
+            else:
+                print(f"\n[WAIT] Segment {i+1} image generation is currently running in the background. Waiting...")
             task = background_tasks[i]
             
             waited = 0
@@ -238,28 +250,31 @@ def run_interactive_pipeline(input_path):
                 if segment.get("image_generated"):
                     continue
 
-        print(f"\n" + "─"*60)
-        print(f"SEGMENT {i+1} / {len(state['segments'])}  [{segment.get('narrative_phase', 'Unknown').upper()}]")
-        print(f"─"*60)
-        print(f" Dialogue: \"{segment['text']}\"")
-        print(f" AI Suggested Prompt: {segment['image_prompt']}")
-        print(f"─"*60)
+        if manual_verify:
+            print(f"\n" + "─"*60)
+            print(f"SEGMENT {i+1} / {len(state['segments'])}  [{segment.get('narrative_phase', 'Unknown').upper()}]")
+            print(f"─"*60)
+            print(f" Dialogue: \"{segment['text']}\"")
+            print(f" AI Suggested Prompt: {segment['image_prompt']}")
+            print(f"─"*60)
 
-        change = input("\nDo you want to change this prompt? (yes/no): ").strip().lower()
-        if change in ['yes', 'y']:
-            new_prompt = input("Enter your new custom prompt: ").strip()
-            if new_prompt:
-                segment['image_prompt'] = new_prompt
-                save_state(state_path, state)
-                print("Prompt updated.")
-        
-        print("\nSpawning background image generation thread... Please wait.")
+            change = input("\nDo you want to change this prompt? (yes/no): ").strip().lower()
+            if change in ['yes', 'y']:
+                new_prompt = input("Enter your new custom prompt: ").strip()
+                if new_prompt:
+                    segment['image_prompt'] = new_prompt
+                    save_state(state_path, state)
+                    print("Prompt updated.")
+        else:
+            print(f"\n[GENERATING] Segment {i+1} / {len(state['segments'])}: Prompting Gemini...")
+
         img_path = os.path.join(project_folder, segment["image_filename"])
+        aspect_ratio = "9:16" if video_format == "short form" else "16:9"
         
         result_container = []
         gen_thread = threading.Thread(
             target=generate_image,
-            args=(segment['image_prompt'], img_path, result_container, False)  # verbose=False to keep background thread quiet
+            args=(segment['image_prompt'], img_path, result_container, False, aspect_ratio)  # verbose=False to keep background thread quiet
         )
         
         task_data = {
@@ -271,7 +286,6 @@ def run_interactive_pipeline(input_path):
         gen_thread.start()
         
         # Wait up to 5 minutes with 1-minute status updates
-        print("Waiting for image generation to complete...")
         waited = 0
         timeout_limit = 300
         check_interval = 10
@@ -300,12 +314,13 @@ def run_interactive_pipeline(input_path):
                     cost_inr = cost_usd * USD_TO_INR_RATE
                     print(f"\n[SUCCESS] Image saved: {segment['image_filename']} (Cost: ${cost_usd:.4f} / approx. ₹{cost_inr:.2f})")
                     
-                    proceed = input("Check the image in the project folder. Type 'next' to continue, or 'exit' to pause: ").strip().lower()
-                    if proceed == 'exit':
-                        if background_tasks:
-                            print("\n[WARNING] Some background image tasks are still running. Exiting will abort their updates to the state, though the files will still save if they complete.")
-                        print(f"Pipeline paused at segment {i+1}. Run option 2 later to resume.")
-                        sys.exit(0)
+                    if manual_verify:
+                        proceed = input("Check the image in the project folder. Type 'next' to continue, or 'exit' to pause: ").strip().lower()
+                        if proceed == 'exit':
+                            if background_tasks:
+                                print("\n[WARNING] Some background image tasks are still running. Exiting will abort their updates to the state, though the files will still save if they complete.")
+                            print(f"Pipeline paused at segment {i+1}. Run option 2 later to resume.")
+                            sys.exit(0)
                 else:
                     print(f"Failed to generate image for Segment {i+1} on this attempt. You can retry it when resuming or running the script again.")
             else:
@@ -353,7 +368,7 @@ def run_interactive_pipeline(input_path):
             add_captions = input("Include on-screen subtitles? (yes/no): ").strip().lower() in ['yes', 'y']
             
             output_video_path = os.path.join(project_folder, "final_video.mp4")
-            if create_video(project_folder, state["segments"], audio_path, subtitle_path, output_video_path, include_audio=add_audio, include_captions=add_captions):
+            if create_video(project_folder, state["segments"], audio_path, subtitle_path, output_video_path, include_audio=add_audio, include_captions=add_captions, video_format=video_format):
                 state["video_generated"] = True
                 save_state(state_path, state)
                 print(f"\n[>>> PIPELINE COMPLETE! <<<]")
@@ -378,22 +393,120 @@ if __name__ == "__main__":
     choice = input("\nEnter your choice (1 or 2): ").strip()
     
     if choice == '1':
-        print("\n--- Paste your script below ---")
-        print("(Type 'DONE' on a new line when finished)\n")
-        lines = []
-        while True:
-            try:
-                line = input()
-                if line.strip().upper() == 'DONE': break
-                lines.append(line)
-            except EOFError: break
+        format_choice = input("\nEnter video format (long form / short form) [default: long form]: ").strip().lower()
+        if "short" in format_choice or format_choice == "s":
+            video_format = "short form"
+        else:
+            video_format = "long form"
+
+        has_blueprint = input("\nDo you have a video blueprint? (yes/no): ").strip().lower() in ['yes', 'y']
         
-        script_text = "\n".join(lines).strip()
-        if script_text:
-            tmp_path = "temp_script_input.txt"
-            with open(tmp_path, "w", encoding="utf-8") as f: f.write(script_text)
-            run_interactive_pipeline(tmp_path)
-            if os.path.exists(tmp_path): os.remove(tmp_path)
+        if has_blueprint:
+            project_name = input("\nEnter project name: ").strip()
+            if not project_name:
+                project_name = "Imported Project"
+                
+            print("\n--- Paste your storyboard JSON below ---")
+            print("(Type 'DONE' on a new line when finished)\n")
+            json_lines = []
+            while True:
+                try:
+                    line = input()
+                    if line.strip().upper() == 'DONE': break
+                    json_lines.append(line)
+                except EOFError: break
+            
+            json_text = "\n".join(json_lines).strip()
+            if not json_text:
+                print("[ERROR] No JSON input provided.")
+                sys.exit(1)
+                
+            prompt_key = input("\nEnter the image prompt key name: ").strip()
+            script_key = input("Enter the script text (dialogue) key name: ").strip()
+            
+            try:
+                parsed_json = json.loads(json_text)
+                
+                # Extract the list of items
+                items_list = None
+                if isinstance(parsed_json, list):
+                    items_list = parsed_json
+                elif isinstance(parsed_json, dict):
+                    for k, v in parsed_json.items():
+                        if isinstance(v, list):
+                            items_list = v
+                            break
+                    if items_list is None:
+                        items_list = [parsed_json]
+                        
+                if not items_list:
+                    raise ValueError("Could not find any list of items in the JSON.")
+                
+                # Build segments
+                segments = []
+                for idx, item in enumerate(items_list):
+                    text_val = item.get(script_key, "")
+                    prompt_val = item.get(prompt_key, "")
+                    
+                    # Case-insensitive fallback check
+                    if not text_val and not prompt_val:
+                        for k, v in item.items():
+                            if k.lower() == script_key.lower():
+                                text_val = v
+                            if k.lower() == prompt_key.lower():
+                                prompt_val = v
+                                
+                    segments.append({
+                        "narrative_phase": item.get("narrative_phase", f"Scene {idx+1}"),
+                        "text": str(text_val),
+                        "image_prompt": str(prompt_val),
+                        "parent_order": idx + 1,
+                        "sub_order": 1,
+                        "audio_generated": False,
+                        "image_generated": False,
+                        "image_filename": f"segment_{idx+1:03d}_scene.png",
+                        "audio_filename": f"audio_{idx+1:03d}.mp3"
+                    })
+                    
+                state = {
+                    "title": project_name,
+                    "segments": segments,
+                    "segments_flattened": True,
+                    "subtitles_generated": False,
+                    "video_generated": False,
+                    "video_format": video_format
+                }
+                
+                # Create nested project folder
+                project_folder = create_project_folder(project_name, OUTPUT_DIR, video_format)
+                state_path = os.path.join(project_folder, "blueprint.json")
+                save_state(state_path, state)
+                print(f"\n[INFO] Project successfully imported from blueprint. Saved at: {project_folder}")
+                
+                # Execute pipeline passing the folder (which resumes directly to Phase 3)
+                run_interactive_pipeline(project_folder)
+                
+            except Exception as e:
+                print(f"\n[ERROR] Failed to parse JSON or build blueprint: {e}")
+                
+        else:
+            # Traditional script analysis pipeline
+            print("\n--- Paste your script below ---")
+            print("(Type 'DONE' on a new line when finished)\n")
+            lines = []
+            while True:
+                try:
+                    line = input()
+                    if line.strip().upper() == 'DONE': break
+                    lines.append(line)
+                except EOFError: break
+            
+            script_text = "\n".join(lines).strip()
+            if script_text:
+                tmp_path = "temp_script_input.txt"
+                with open(tmp_path, "w", encoding="utf-8") as f: f.write(script_text)
+                run_interactive_pipeline(tmp_path, video_format)
+                if os.path.exists(tmp_path): os.remove(tmp_path)
     elif choice == '2':
         folder = input("\nEnter project folder path: ").strip()
         if os.path.isdir(folder): run_interactive_pipeline(folder)

@@ -13,9 +13,9 @@ client = genai.Client(api_key=IMAGE_API_KEY)
 
 
 
-def generate_image(scene_description, output_path, result_container=None, verbose=True):
+def generate_image(scene_description, output_path, result_container=None, verbose=True, aspect_ratio="16:9"):
     """
-    Generates a 16:9 image using the gemini-3.1-flash-image model.
+    Generates an image (default 16:9) using the gemini-3.1-flash-image model.
     Applies the Master Style Prompt to ensure consistent 2D cartoon visuals.
     Saves the raw bytes returned by the API directly to a file.
     Calculates and returns the estimated USD cost of the image.
@@ -24,7 +24,7 @@ def generate_image(scene_description, output_path, result_container=None, verbos
     """
     full_prompt = MASTER_STYLE_PROMPT.format(scene_description=scene_description)
 
-    logger.info(f"Requesting image generation with model {IMAGE_MODEL} for scene:\n'{scene_description}'")
+    logger.info(f"Requesting image generation with model {IMAGE_MODEL} and aspect ratio {aspect_ratio} for scene:\n'{scene_description}'")
 
     max_retries = 4
     base_delay = 5  # start with a 5 second delay
@@ -46,7 +46,7 @@ def generate_image(scene_description, output_path, result_container=None, verbos
                     response_modalities=["IMAGE"],
                     image_config=types.ImageConfig(
                         image_size="1K", # Explicitly set to 1K for cost consistency
-                        aspect_ratio="16:9" # Explicitly set for video format
+                        aspect_ratio=aspect_ratio # Explicitly set for video format
                     )
                 ),
             )

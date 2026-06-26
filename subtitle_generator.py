@@ -25,16 +25,17 @@ def format_timestamp(seconds):
     millis = int(td.microseconds / 1000)
     return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
 
-def generate_subtitles(audio_path, output_path):
+def generate_subtitles(audio_path, output_path, video_format="long form"):
     """
     Transcribes audio and generates an SRT file with 'Logical Flow' chunking.
     Groups words based on punctuation, natural pauses, and phrase logic.
+    For short form videos, it limits chunking to 1-2 words at a time.
     """
     if not model:
         logger.error("Whisper model is not loaded. Cannot generate subtitles.")
         return None
 
-    logger.info(f"Starting Whisper transcription for: {audio_path}")
+    logger.info(f"Starting Whisper transcription for: {audio_path} ({video_format})")
     try:
         # Get word-level timestamps from Whisper
         result = model.transcribe(audio_path, word_timestamps=True)
@@ -47,7 +48,7 @@ def generate_subtitles(audio_path, output_path):
         index = 1
         
         buffer = []
-        max_words_per_line = 5
+        max_words_per_line = 2 if video_format == "short form" else 5
         
         for i, w in enumerate(words):
             word_text = w['word'].strip()
@@ -58,7 +59,7 @@ def generate_subtitles(audio_path, output_path):
             is_end_of_sentence = any(p in word_text for p in ['.', '?', '!'])
             
             # 2. Ends with a comma and the buffer is reasonably long
-            is_comma_break = (',' in word_text) and len(buffer) >= 3
+            is_comma_break = (',' in word_text) and len(buffer) >= (2 if video_format == "short form" else 3)
             
             # 3. Buffer reached hard limit
             is_full = len(buffer) >= max_words_per_line
@@ -68,7 +69,7 @@ def generate_subtitles(audio_path, output_path):
             if i < len(words) - 1:
                 gap = words[i+1]['start'] - w['end']
                 if gap > 0.4:
-                    is_long_pause = True
+                     is_long_pause = True
 
             # If any trigger is met, flush the buffer to a new SRT block
             if is_end_of_sentence or is_comma_break or is_full or is_long_pause:

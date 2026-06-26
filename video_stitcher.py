@@ -20,12 +20,13 @@ def get_audio_duration(audio_path):
         logger.error(f"Failed to extract audio duration for {audio_path}: {e}")
         return 0
 
-def create_video(project_folder, segments, audio_path, subtitle_path, output_path, include_audio=True, include_captions=True):
+def create_video(project_folder, segments, audio_path, subtitle_path, output_path, include_audio=True, include_captions=True, video_format="long form"):
     """
     Stitches static images, full audio, and styled subtitles into a final video.
     Uses a complex FFmpeg filter graph to align everything perfectly.
+    Supports both long form (16:9) and short form (9:16) video formats.
     """
-    logger.info("Initializing Video Stitching Process...")
+    logger.info(f"Initializing Video Stitching Process for {video_format}...")
     
     total_audio_duration = get_audio_duration(audio_path)
     if total_audio_duration == 0:
@@ -57,6 +58,16 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
 
     filter_complex = []
     
+    # Set video layout parameters based on video format
+    if video_format == "short form":
+        width = 1080
+        height = 1920
+        scale_res = "2160:3840"
+    else:
+        width = VIDEO_WIDTH
+        height = VIDEO_HEIGHT
+        scale_res = "3840:2160"
+    
     for i, segment in enumerate(segments):
         # Get the actual duration of THIS segment's audio file
         seg_audio_file = os.path.join(project_folder, segment["audio_filename"])
@@ -70,8 +81,8 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
         # setsar=1/1 forces a square pixel ratio to prevent concatenation errors.
         num_frames = int(seg_dur * VIDEO_FPS)
         static_filter = (
-            f"scale=3840:2160,zoompan=z=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-            f"d={num_frames}:s={VIDEO_WIDTH}x{VIDEO_HEIGHT}:fps={VIDEO_FPS},setsar=1/1,setpts=PTS-STARTPTS"
+            f"scale={scale_res},zoompan=z=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+            f"d={num_frames}:s={width}x{height}:fps={VIDEO_FPS},setsar=1/1,setpts=PTS-STARTPTS"
         )
         
         filter_complex.append(f"[{i}:v]{static_filter}[v{i}];")
@@ -85,11 +96,18 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
         # Escape path characters for FFmpeg filter syntax
         sub_path_esc = subtitle_path.replace("\\", "/").replace(":", "\\:")
         
-        # Comic Sans MS, big font, thick black outline, positioned nicely near bottom (MarginV=70)
-        style = (
-            "force_style='FontName=Comic Sans MS,FontSize=28,PrimaryColour=&H00FFFFFF&,"
-            "OutlineColour=&H00000000&,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=70'"
-        )
+        if video_format == "short form":
+            # Comic Sans MS, very large font, yellow text, thick black outline, positioned near the middle (MarginV=850)
+            style = (
+                "force_style='FontName=Comic Sans MS,FontSize=52,PrimaryColour=&H0000FFFF&,"
+                "OutlineColour=&H00000000&,BorderStyle=1,Outline=4,Shadow=1,Alignment=2,MarginV=850'"
+            )
+        else:
+            # Comic Sans MS, big font, thick black outline, positioned nicely near bottom (MarginV=70)
+            style = (
+                "force_style='FontName=Comic Sans MS,FontSize=28,PrimaryColour=&H00FFFFFF&,"
+                "OutlineColour=&H00000000&,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=70'"
+            )
         filter_complex.append(f"[v_concat]subtitles='{sub_path_esc}':{style}[v_final];")
         video_map = "[v_final]"
     else:

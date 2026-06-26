@@ -41,15 +41,16 @@ def slugify(text):
     text = re.sub(r'[\s_-]+', '_', text).strip('_')
     return text
 
-def create_project_folder(script_title, base_dir="projects"):
+def create_project_folder(script_title, base_dir="projects", video_format="long form"):
     """
-    Creates a timestamped project folder nested inside a daily date folder
+    Creates a timestamped project folder nested inside a format directory and a daily date folder
     (e.g., YYYY-MM-DD) to store all generated assets.
     """
+    format_dir = "short form video" if video_format == "short form" else "long form video"
     today_str = datetime.datetime.now().strftime("%Y-%m-%d")
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     folder_name = f"{slugify(script_title)}_{timestamp}"
-    path = os.path.join(base_dir, today_str, folder_name)
+    path = os.path.join(base_dir, format_dir, today_str, folder_name)
     os.makedirs(path, exist_ok=True)
     return path
 
