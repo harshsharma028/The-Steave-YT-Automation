@@ -24,6 +24,23 @@ def get_audio_duration(audio_path):
         logger.error(f"❌ Audio duration extract failed: {str(e)[:60]}")
         return 0
 
+def get_image_size(path):
+    """
+    Return (width, height) for an image, or None if it cannot be read.
+    """
+    try:
+        cmd = [
+            'ffprobe', '-v', 'error', '-select_streams', 'v:0',
+            '-show_entries', 'stream=width,height',
+            '-of', 'csv=s=x:p=0', path
+        ]
+        out = subprocess.run(cmd, capture_output=True, text=True).stdout.strip()
+        w, h = out.split('x')
+        return int(w), int(h)
+    except Exception:
+        return None
+
+
 def _ken_burns(index, num_frames):
     """
     Motion expression for one shot. Direction alternates between shots so the
@@ -120,10 +137,14 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
             f"setsar=1/1,setpts=PTS-STARTPTS"
         )
 
-        if video_format == "short form":
-            # Source art is 16:9. Cropping it to 9:16 would cut the joke out of
-            # frame, and stretching it would distort everything, so the whole
-            # picture sits over a blurred enlargement of itself.
+        size = get_image_size(image_paths[i])
+        source_is_landscape = bool(size) and size[0] > size[1] * 1.2
+
+        if video_format == "short form" and source_is_landscape:
+            # Landscape art reused in a vertical video. Cropping it to 9:16
+            # would cut the joke out of frame and stretching it would distort
+            # everything, so the whole picture sits over a blurred enlargement
+            # of itself. Art generated at 9:16 skips this and fills the frame.
             work_w, work_h = width * 3 // 2, height * 3 // 2
             filter_complex.append(
                 f"[{i}:v]split=2[a{i}][b{i}];"
@@ -134,8 +155,11 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
                 f"[c{i}]{motion}[v{i}];"
             )
         else:
+            # Scale to cover rather than to fixed dimensions, so an image whose
+            # aspect differs slightly from the target is cropped, never squashed.
             filter_complex.append(
-                f"[{i}:v]scale={scale_res},{trim},{motion}[v{i}];"
+                f"[{i}:v]scale={scale_res}:force_original_aspect_ratio=increase,"
+                f"crop={scale_res},{trim},{motion}[v{i}];"
             )
 
     # Chain the shots together with crossfades
