@@ -35,11 +35,17 @@ Describe:
 Each image is held on screen for several seconds with a slow camera push, so
 favour compositions with depth and a strong silhouette that reward a long look.
 
+NEVER describe anything that implies written words. Do not mention signs,
+signage, marquees, labels, logos, banners, posters, price tags, screens showing
+text, books, newspapers or tickets with writing. The image model renders such
+things as misspelled gibberish. If a scene needs one of these objects, describe
+it as blank and unlettered — "a glowing empty marquee panel", "a plain unmarked
+banner". Carry meaning through shape, scale, light and composition instead.
+
 PREFER: conceptual scenes, systems made visible, striking scale contrast,
 strong silhouettes, generous negative space, one clear subject
-AVOID: text/letters/numbers of any kind, facial expressions, stick figures,
-cartoon gags, cluttered dashboards, floating disconnected objects,
-white backgrounds, anything resembling a clickbait thumbnail
+AVOID: facial expressions, stick figures, cartoon gags, cluttered dashboards,
+floating disconnected objects, white backgrounds, clickbait thumbnail energy
 
 Script chunk:
 "{chunk_text}"

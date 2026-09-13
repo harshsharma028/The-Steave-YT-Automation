@@ -52,6 +52,13 @@ CHANNEL_NAME = "Hidden Mechanics"
 
 # Master Style Prompt
 MASTER_STYLE_PROMPT = """
+ABSOLUTE RULE, APPLIES BEFORE EVERYTHING ELSE: render NO text of any kind.
+No letters, no words, no numbers, no signage, no marquee lettering, no logos,
+no labels, no captions, no watermarks. Signs, screens, marquees, banners and
+posters must be left completely BLANK — glowing empty panels, plain coloured
+shapes. If a described object would normally carry writing, draw it smooth and
+unlettered. Any text in the image is a failed render.
+
 Flat vector editorial illustration for a premium explainer video. Think modern
 infographic storytelling — the visual language of high-end science and economics
 documentaries, not a children's cartoon.

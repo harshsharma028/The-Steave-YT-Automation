@@ -138,17 +138,21 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
     if include_captions:
         sub_path_esc = subtitle_path.replace("\\", "/").replace(":", "\\:")
 
+        # Sizes and margins here are in ASS script units, which libass scales by
+        # video_height/PlayResY (PlayResY defaults to 288 for SRT input). They
+        # are therefore much smaller than the pixel values they produce, and are
+        # not interchangeable between the two formats.
         if video_format == "short form":
-            # Short-form: large, amber, parked above the UI chrome
+            # Short-form: amber, parked above the app's UI chrome
             style = (
-                "force_style='FontName=Arial Black,FontSize=54,Bold=1,PrimaryColour=&H0023A6F5&,"
-                "OutlineColour=&H00101010&,BorderStyle=1,Outline=5,Shadow=0,Alignment=2,MarginV=780'"
+                "force_style='FontName=Arial Black,FontSize=13,Bold=1,PrimaryColour=&H0023A6F5&,"
+                "OutlineColour=&H00101010&,BorderStyle=1,Outline=5,Shadow=0,Alignment=2,MarginV=95'"
             )
         else:
             # Long-form: clean white, sits in the calm lower fifth of the frame
             style = (
-                "force_style='FontName=Arial Black,FontSize=30,Bold=1,PrimaryColour=&H00F7F3E9&,"
-                "OutlineColour=&H00101010&,BorderStyle=1,Outline=4,Shadow=0,Alignment=2,MarginV=85'"
+                "force_style='FontName=Arial Black,FontSize=18,Bold=1,PrimaryColour=&H00F7F3E9&,"
+                "OutlineColour=&H00101010&,BorderStyle=1,Outline=4,Shadow=0,Alignment=2,MarginV=22'"
             )
         filter_complex.append(f"[v_concat]subtitles='{sub_path_esc}':{style}[v_final];")
         video_map = "[v_final]"
