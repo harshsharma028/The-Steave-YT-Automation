@@ -3,7 +3,7 @@ import time
 from google import genai
 from google.genai import types
 from config import CHAT_API_KEY, TEXT_MODEL
-from utils import setup_logger
+from utils import setup_logger, classify_api_error, parse_json_lenient
 
 logger = setup_logger("ScriptAnalyzer")
 client = genai.Client(api_key=CHAT_API_KEY)
@@ -64,21 +64,18 @@ Return valid JSON:
                 config=types.GenerateContentConfig(response_mime_type="application/json")
             )
 
-            data = json.loads(response.text)
+            data = parse_json_lenient(response.text)
             title = data.get('title', 'Untitled')
             segment_count = len(data.get('segments', []))
             logger.info(f"✓ Script analyzed: '{title}' → {segment_count} segments")
             return data
 
         except Exception as e:
-            error_str = str(e).lower()
-            # Only retry on server errors (503, 504)
-            if ("503" in error_str or "504" in error_str) and attempt < max_retries:
-                wait = 3 * (attempt + 1)  # 3s, then 6s
-                logger.warning(f"⚠ API high demand. Retrying in {wait}s... (Attempt {attempt + 1}/{max_retries})")
+            should_retry, wait, msg = classify_api_error(e)
+            if should_retry and attempt < max_retries:
+                logger.warning(f"⚠ {msg}. Retry {attempt + 1}/{max_retries}")
                 time.sleep(wait)
                 continue
-            else:
-                logger.error(f"✗ Script analysis failed: {str(e)[:100]}")
-                return None
+            logger.error(f"✗ Script analysis failed: {msg}")
+            return None
     return None

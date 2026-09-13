@@ -2,7 +2,7 @@ import os
 import subprocess
 from config import (
     VIDEO_FPS, VIDEO_WIDTH, VIDEO_HEIGHT,
-    VIDEO_PRESET, VIDEO_CRF, KEN_BURNS_ZOOM, TRANSITION_DURATION,
+    VIDEO_PRESET, VIDEO_CRF, KEN_BURNS_ZOOM, TRANSITION_DURATION, EDGE_TRIM,
 )
 from utils import setup_logger
 
@@ -110,8 +110,11 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
         num_frames = max(int(padded_dur * VIDEO_FPS), 1)
         z_expr, x_expr, y_expr = _ken_burns(i, num_frames)
 
+        # The retro print style keeps drawing a paper margin around the artwork
+        # however firmly the prompt forbids it, so trim the outer edge here
+        # rather than relying on the image model to behave.
         filter_str = (
-            f"scale={scale_res},"
+            f"scale={scale_res},crop=iw*{1 - 2 * EDGE_TRIM}:ih*{1 - 2 * EDGE_TRIM},"
             f"zoompan=z='{z_expr}':x='{x_expr}':y='{y_expr}':"
             f"d={num_frames}:s={width}x{height}:fps={VIDEO_FPS},"
             f"setsar=1/1,setpts=PTS-STARTPTS"

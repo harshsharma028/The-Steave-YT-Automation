@@ -4,7 +4,7 @@ import os
 from google import genai
 from google.genai import types
 from config import CHAT_API_KEY, TEXT_MODEL
-from utils import setup_logger
+from utils import setup_logger, classify_api_error, parse_json_lenient
 
 logger = setup_logger("PromptGenerator")
 client = genai.Client(api_key=CHAT_API_KEY)
@@ -15,6 +15,20 @@ def generate_image_prompt(chunk_text, chunk_index, project_folder):
     Returns scene list with image_prompt descriptions.
     Saves raw JSON response for debugging.
     """
+    # Reuse a cached response if this chunk was already generated. Phase 2 aborts
+    # the whole run on any failure, and the free tier only allows 20 text
+    # requests a day, so re-running must not pay for the same chunk twice.
+    cached_path = os.path.join(project_folder, f"prompt_response_chunk_{chunk_index:03d}.json")
+    if os.path.exists(cached_path):
+        try:
+            with open(cached_path, encoding="utf-8") as f:
+                scenes = json.load(f).get("scenes", [])
+            if scenes:
+                logger.info(f"📂 Segment {chunk_index + 1}: reusing cached prompts ({len(scenes)} scenes)")
+                return scenes
+        except Exception:
+            pass  # fall through and regenerate
+
     logger.info(f"🎬 Generating visual prompts for segment {chunk_index + 1}...")
 
     prompt = f"""You are the art director for a comedy channel about weird history.
@@ -33,8 +47,14 @@ Describe:
 - Physical comedy: scale gags, chaos, things going wrong in the background
 - What makes someone stop scrolling
 
-Each image is held on screen for several seconds with a slow camera push, so
-give it a strong silhouette and enough going on to reward a second look.
+PACING — this matters as much as the art. Split the chunk into 2 to 4 scenes,
+cutting on each new idea, each new joke and each turn in the story. One image
+per chunk is too slow: a held shot longer than about eight seconds loses the
+viewer. Short chunks get 2 scenes, longer ones get 3 or 4. Never return a single
+scene unless the chunk is one very short sentence.
+
+Each image is held for several seconds under a slow camera push, so give it a
+strong silhouette and enough going on to reward a second look.
 
 NEVER describe anything that implies written words. Do not mention signs,
 signage, marquees, labels, logos, banners, posters, price tags, screens showing
@@ -78,7 +98,7 @@ Output ONLY valid JSON:
                 contents=prompt,
                 config=types.GenerateContentConfig(response_mime_type="application/json")
             )
-            data = json.loads(response.text)
+            data = parse_json_lenient(response.text)
 
             # Save raw JSON for debugging
             response_filename = f"prompt_response_chunk_{chunk_index:03d}.json"
@@ -91,14 +111,11 @@ Output ONLY valid JSON:
             return data.get("scenes", [])
 
         except Exception as e:
-            error_str = str(e).lower()
-            # Retry only on server errors
-            if ("503" in error_str or "504" in error_str or "high demand" in error_str) and attempt < max_retries:
-                wait = 3 * (attempt + 1)
-                logger.warning(f"⚠ API overloaded. Retrying in {wait}s... (Attempt {attempt + 1}/{max_retries})")
+            should_retry, wait, msg = classify_api_error(e)
+            if should_retry and attempt < max_retries:
+                logger.warning(f"⚠ {msg}. Retry {attempt + 1}/{max_retries}")
                 time.sleep(wait)
                 continue
-            else:
-                logger.error(f"✗ Prompt generation failed: {str(e)[:100]}")
-                return None
+            logger.error(f"✗ Prompt generation failed: {msg}")
+            return None
     return None

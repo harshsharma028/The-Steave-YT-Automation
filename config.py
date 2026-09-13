@@ -6,7 +6,7 @@ load_dotenv()
 CHAT_API_KEY = os.getenv("CHAT_API_KEY")
 IMAGE_API_KEY = os.getenv("IMAGE_API_KEY")
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "gemini-3.1-flash-image")
-TEXT_MODEL = os.getenv("TEXT_MODEL", "gemini-2.5-flash")
+TEXT_MODEL = os.getenv("TEXT_MODEL", "gemini-3.1-flash-lite")
 TTS_VOICE = os.getenv("TTS_VOICE", "en-US-BrianMultilingualNeural")
 # Slightly faster than default. Andrew at 0% read like a nature documentary.
 TTS_RATE = os.getenv("TTS_RATE", "+8%")
@@ -32,6 +32,9 @@ VIDEO_CRF = 19
 # Ken Burns motion. Slow enough that the viewer feels it rather than sees it.
 KEN_BURNS_ZOOM = 0.12   # total zoom travel over a shot (1.00 -> 1.12)
 TRANSITION_DURATION = 0.4  # crossfade between shots, seconds
+# Fraction trimmed off each edge to remove the printed paper margin the
+# retro style keeps adding around the artwork.
+EDGE_TRIM = 0.06
 
 # Whisper settings
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
@@ -83,12 +86,14 @@ VISUAL LANGUAGE:
 - Hand-inked comic style with halftone dot shading
 - Flat printed colour that slightly misregisters, like old offset printing
 - One clear comedic moment per frame, staged like a punchline
-- Dynamic diagonal compositions with a strong sense of motion
+- A strong sense of motion in the poses and action
 
 COMPOSITION:
-- FULL BLEED: the artwork fills the entire frame edge to edge. No borders, no
-  frames, no panel outlines, no postcard margins, no empty caption strip along
-  the bottom. Nothing may box the image in.
+- FULL BLEED, THIS IS CRITICAL: the illustrated scene must reach all four edges
+  and all four corners of the image. Every part of the canvas is drawn scenery.
+  No borders, frames or panel outlines. No margins of bare paper. No diagonal or
+  angled split leaving part of the canvas empty. No blank caption strip. The
+  picture is not an object sitting on a background — it IS the whole background.
 - Wide framing, clear visual hierarchy, the gag readable instantly
 - Keep the lower fifth of the frame calm and uncluttered — subtitles sit there
 - Must read at phone size: big shapes, strong silhouettes, high contrast
