@@ -24,12 +24,14 @@ CRITICAL RULES:
 2. LOGICAL CHUNKING: Group sentences by meaning, not line count.
 3. NARRATIVE PHASES: Label each segment with the job it does for retention.
    Use this structure where the script supports it:
-     - "Hook"          the first ~15 seconds: the surprising claim or question
-     - "Stakes"        why the viewer should care
-     - "Beat 1/2/3"    escalating explanation, each answering something
-                       and opening a new question
-     - "Payoff"        the satisfying "so that's why" resolution
+     - "Hook"          the first ~15 seconds: the absurd claim, stated flat
+     - "Setup"         the context that makes the absurdity land
+     - "Beat 1/2/3"    escalating madness, each one topping the last
+     - "Punchline"     the most ridiculous detail, saved for last
      - "Call to Action"
+   This is comedy about things that genuinely happened, so keep the
+   escalation intact — each beat should feel less believable than the one
+   before it.
    Keep the Hook tight — it is the highest-value real estate in the video.
 4. ORDER: Sequential integer from 1 onwards.
 

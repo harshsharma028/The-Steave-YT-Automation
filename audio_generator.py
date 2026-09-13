@@ -1,14 +1,16 @@
 import asyncio
 import edge_tts
 import os
-from config import TTS_VOICE
+from config import TTS_VOICE, TTS_RATE
 from utils import setup_logger
 
 logger = setup_logger("AudioGenerator")
 
-async def generate_audio_async(text, output_path, voice=TTS_VOICE):
+async def generate_audio_async(text, output_path, voice=TTS_VOICE, rate=TTS_RATE):
     """
     Generate TTS audio via Microsoft Edge TTS (async).
+    Rate nudges delivery speed, which is most of what makes a read feel
+    energetic rather than like a documentary.
     """
     if not text or not text.strip():
         logger.error("❌ Empty text, cannot generate audio")
@@ -16,7 +18,7 @@ async def generate_audio_async(text, output_path, voice=TTS_VOICE):
 
     try:
         logger.info(f"🔊 TTS: {len(text)} chars → {output_path}")
-        communicate = edge_tts.Communicate(text=text, voice=voice)
+        communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate)
         await communicate.save(output_path)
 
         if os.path.exists(output_path):

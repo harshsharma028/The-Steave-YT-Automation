@@ -7,7 +7,9 @@ CHAT_API_KEY = os.getenv("CHAT_API_KEY")
 IMAGE_API_KEY = os.getenv("IMAGE_API_KEY")
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "gemini-3.1-flash-image")
 TEXT_MODEL = os.getenv("TEXT_MODEL", "gemini-2.5-flash")
-TTS_VOICE = os.getenv("TTS_VOICE", "en-US-AndrewMultilingualNeural")
+TTS_VOICE = os.getenv("TTS_VOICE", "en-US-BrianMultilingualNeural")
+# Slightly faster than default. Andrew at 0% read like a nature documentary.
+TTS_RATE = os.getenv("TTS_RATE", "+8%")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "projects")
 FAL_MODEL = os.getenv("FAL_MODEL", "fal-ai/nano-banana")
 FAL_KEY = os.getenv("FAL_KEY", "")
@@ -42,13 +44,13 @@ IMAGE_TOKENS_PER_IMAGE_1K = 1120     # 1120 tokens per 1K image (default)
 USD_TO_INR_RATE = 95.20              # Current approximate conversion rate
 
 # ============================================================
-# CHANNEL IDENTITY — "Hidden Mechanics"
-# Locked art direction. The palette is the brand: holding it
-# across every scene makes independently-generated AI images
-# read as one channel despite no character consistency.
+# CHANNEL IDENTITY — "Hold On, That Really Happened"
+# Weird history, told for laughs. Locked art direction: the
+# retro pulp palette is the brand, and holding it across every
+# scene makes independently-generated images read as one channel.
 # ============================================================
 
-CHANNEL_NAME = "Hidden Mechanics"
+CHANNEL_NAME = "Hold On, That Really Happened"
 
 # Master Style Prompt
 MASTER_STYLE_PROMPT = """
@@ -59,43 +61,44 @@ posters must be left completely BLANK — glowing empty panels, plain coloured
 shapes. If a described object would normally carry writing, draw it smooth and
 unlettered. Any text in the image is a failed render.
 
-Flat vector editorial illustration for a premium explainer video. Think modern
-infographic storytelling — the visual language of high-end science and economics
-documentaries, not a children's cartoon.
+Retro 1960s pulp cartoon poster art. Vintage comic energy — the look of an old
+adventure paperback cover or a mid-century satirical cartoon, hand-inked and
+printed on aged paper.
 
 COLOR PALETTE (use these and only these — this is the channel's brand):
-- Deep navy background (#1B2A4A) as the dominant ground
-- Warm amber/gold (#F5A623) as the primary highlight and focal accent
-- Teal (#2EC4B6) as the secondary accent
-- Warm off-white (#F7F3E9) for key shapes and light
-- Coral (#FF6B5A) used sparingly, only for tension or warning
-Dark, rich, and moody with a few glowing warm highlights. Never pastel, never
-washed out, never a white background.
+- Warm cream paper background (#F2E8D5) as the ground, with subtle halftone grain
+- Bold vintage red (#D6473E)
+- Deep teal (#2A7E7B)
+- Mustard gold (#E8A33D)
+- Near-black ink (#1E1A17) for outlines and shadow
+Printed, slightly worn, warm. Never neon, never pastel, never digital-looking.
 
 FIGURES:
-- People are simple, geometric, anonymous silhouette-style figures
-- No facial detail, no individual identity, no recurring named character
-- Readable purely through posture, gesture and scale
-- Figures serve the idea; they are never the subject of a portrait
+- Expressive cartoon characters with big comic reactions — this is the joke
+- Heavy black ink outlines, bold confident linework
+- Exaggerated poses, wild gestures, faces mid-shock, mid-glee or mid-panic
+- Period-appropriate clothing drawn loosely, not historically fussy
 
 VISUAL LANGUAGE:
-- Clean flat vector shapes, minimal gradients, crisp edges
-- Strong single focal point with generous negative space around it
-- Depth built through overlapping flat layers and scale, not realistic shading
-- Subtle grain/texture is welcome; photorealism is not
-- Conceptual and metaphorical: show the idea as a system, structure or scene
+- Hand-inked comic style with halftone dot shading
+- Flat printed colour that slightly misregisters, like old offset printing
+- One clear comedic moment per frame, staged like a punchline
+- Dynamic diagonal compositions with a strong sense of motion
 
 COMPOSITION:
-- Cinematic wide framing, clear visual hierarchy
-- Keep the lower fifth of the frame visually calm and uncluttered — subtitles sit there
-- One clear idea per image, instantly readable at phone size
+- FULL BLEED: the artwork fills the entire frame edge to edge. No borders, no
+  frames, no panel outlines, no postcard margins, no empty caption strip along
+  the bottom. Nothing may box the image in.
+- Wide framing, clear visual hierarchy, the gag readable instantly
+- Keep the lower fifth of the frame calm and uncluttered — subtitles sit there
+- Must read at phone size: big shapes, strong silhouettes, high contrast
 
 STRICTLY AVOID:
 - Any text, letters, numbers, words, labels, signage, UI or watermarks
-- Stick figures, googly eyes, exaggerated cartoon faces, comic-strip style
-- Clickbait thumbnail energy, giant arrows, explosions, shock expressions
-- Cluttered infographic dashboards or chart-salad
-- White or light backgrounds
+- Modern flat-vector or corporate illustration looks
+- Neon or candy colours, gradients, glossy 3D rendering, photorealism
+- Gore, cruelty played straight, or anything mean-spirited — the tone is
+  affectionate disbelief, never nasty
 
 SCENE:
 {scene_description}

@@ -1,42 +1,42 @@
-# Hidden Mechanics — Channel Strategy
+# Hold On, That Really Happened — Channel Strategy
 
-The decisions below are locked in and already implemented in the pipeline.
-Change them deliberately, not casually — consistency is the entire growth
-mechanism here.
+Weird history, told for laughs. The decisions below are implemented in the
+pipeline. Change them deliberately — consistency is the growth mechanism.
+
+> **Why this replaced the first plan.** The original strategy here was a
+> finance-adjacent "hidden systems" channel, chosen for RPM. It was boring to
+> watch and boring to make, and got abandoned halfway through its own demo
+> video. A niche you will actually keep making for months beats a higher-paying
+> one you won't. That lesson is the reason for everything below.
 
 ---
 
 ## 1. The niche
 
-**Hidden Mechanics — how the systems behind everyday life actually work.**
+**Weird history** — insane laws, bizarre historical figures, and things that
+genuinely happened but sound invented.
 
-Four content pillars, in rotation:
+Four pillars, in rotation:
 
-| Pillar | Example titles |
+| Pillar | Example topics |
 |---|---|
-| Why things cost what they cost | Why popcorn costs more than the movie ticket |
-| How everyday systems work | What actually happens when you tap your card |
-| Why we do it this way | Why every keyboard is still QWERTY |
-| Who actually profits | How free apps make more than paid ones |
+| Laws that actually existed | Peter the Great's beard tax |
+| People who really did that | The emperor who declared war on birds |
+| Trials and punishments | Medieval animals put on trial |
+| Everyday life was insane | What Victorians did for fun |
 
-**Why this niche:**
+**Why it works:**
 
-- **Evergreen by construction.** Nothing depends on news cycles. A video from
-  today still earns views in three years.
-- **Infinite supply.** This matters more than anything else for an automated
-  channel. You will never run out of topics, and the topics are discoverable
-  algorithmically.
-- **Finance-adjacent RPM.** Money/business topics pull $10–20 RPM versus $3–5
-  for generic curiosity content, without requiring you to give financial advice.
-- **Built-in hooks.** Every topic is naturally a question, which is exactly the
-  curiosity gap the first 15 seconds needs.
-- **Works with still images.** No recurring characters means AI image
-  inconsistency never shows.
+- **Fun to make.** The single most important factor. The scripts are jokes, not
+  lectures.
+- **Infinite supply.** Recorded history is bottomless and algorithmically
+  searchable — critical for an automated channel.
+- **Evergreen by construction.** Nothing depends on the news cycle.
+- **Naturally shareable.** "You will not believe this" is the whole format.
+- **Hook writes itself.** Every topic opens on an absurd claim.
 
-**The single biggest change from before:** the old videos were scattered —
-mosquitoes, giant ants, fire, borders, adulting. No theme means no returning
-audience, no channel identity, and an algorithm that cannot categorise you.
-One theme, held for months, is the growth mechanism.
+Tone: **affectionate disbelief.** Never mean-spirited, never gory, never
+punching down. The comedy is "humans are ridiculous", not cruelty.
 
 ---
 
@@ -44,22 +44,25 @@ One theme, held for months, is the growth mechanism.
 
 Locked in `config.py → MASTER_STYLE_PROMPT`.
 
-**Flat vector editorial illustration.** Deep navy ground, warm amber focal
-highlights, teal secondary, off-white, coral only for tension.
+**Retro 1960s pulp cartoon poster art.** Warm cream paper, bold vintage red,
+deep teal, mustard gold, heavy black ink, halftone texture.
 
-The palette *is* the brand. Every image is generated independently, so the only
-thing that makes 200 images across 20 videos feel like one channel is holding
-the same five colours. This is also why the style moved away from stickman
-cartoons: those read as generic AI output, and thousands of channels use them.
+Chosen over brighter flat-vector options because it is **distinctive and
+ownable** — very little on YouTube looks like this, so a frame is recognisably
+yours. The palette is the brand: it is what makes independently generated images
+read as one channel.
 
-Three rules that matter most:
+Three rules that carry the most weight:
 
-- **No text in images, ever.** AI renders text as garbage, and even when legible
-  it looks amateur. Explicitly forbidden in the prompt now.
-- **Anonymous geometric figures, no faces.** A named character with a face will
-  silently morph between every scene. Anonymous figures sidestep the problem
-  entirely and read as more premium.
-- **Lower fifth of frame kept calm** so subtitles always sit on clean space.
+- **No text in images, ever.** The model renders it as gibberish — an early test
+  produced a popcorn tub reading "POPORN". Banned in the style prompt *and* in
+  the scene writer, because words like "marquee" or "sign" in a scene
+  description will summon lettering on their own.
+- **Full bleed.** Without this rule the model boxes artwork inside a decorative
+  border and wastes 40% of the frame on empty margin.
+- **Expressive characters.** Unlike a systems channel, comedy needs faces
+  mid-shock. Character consistency across scenes is not guaranteed, but the
+  heavy stylisation hides it and the gag matters more.
 
 ---
 
@@ -67,64 +70,70 @@ Three rules that matter most:
 
 Locked in `video_stitcher.py`.
 
-- **Slow Ken Burns on every shot**, direction alternating between shots so the
-  video breathes. Previously `zoompan=z=1`, which is literally no zoom — it was
-  a frozen slideshow, and that alone was the biggest reason it looked cheap.
-- **0.4s crossfades** between shots instead of hard cuts, with the shot lengths
-  padded so the video still matches the master audio exactly.
-- **Captions**: Arial Black, heavy outline, no shadow. Comic Sans is gone.
-- **Encoding**: `preset medium`, `crf 19`. The old `ultrafast`/`crf 22` was
-  visibly soft, and flat vector art shows banding badly.
+- **Slow Ken Burns on every shot**, direction alternating. Previously
+  `zoompan=z=1`, which applies no zoom at all — a frozen slideshow, and the
+  biggest single reason early videos felt lifeless.
+- **0.4s crossfades**, with shot lengths padded so video still matches the
+  master audio exactly.
+- **Captions**: Arial Black, heavy outline. Sizes are ASS script units scaled by
+  `video_height/288`, *not* pixels — getting this wrong once pushed short-form
+  captions entirely off screen.
+- **Encoding**: `preset medium`, `crf 19`.
 
 ---
 
-## 4. The writing
+## 4. The voice
 
-Locked in `script_analyzer.py`. Every script follows:
+`en-US-BrianMultilingualNeural` at **+8% rate**.
+
+Tagged "approachable, casual, sincere" — it sounds like a person telling you
+something ridiculous. The previous voice (Andrew, 0% rate) is tagged "warm,
+confident, authentic", which reads as a nature documentary and made everything
+feel slow. Rate is most of what separates energetic from sleepy.
+
+One voice, never changed. It is as much the brand as the palette.
+
+---
+
+## 5. The writing
+
+Locked in `script_analyzer.py`. Every script:
 
 | Segment | Job |
 |---|---|
-| **Hook** (first ~15s) | The surprising claim or question. No intro, no branding, no "hey guys". |
-| **Stakes** | Why this touches the viewer's own life. |
-| **Beat 1 / 2 / 3** | Escalating explanation. Each answers something *and* opens a new question. |
-| **Payoff** | The satisfying "so that's why". |
-| **CTA** | One line, ~10s. |
+| **Hook** (~15s) | The absurd claim, stated flat. No intro, no "hey guys". |
+| **Setup** | The context that makes the absurdity land. |
+| **Beat 1 / 2 / 3** | Escalating madness — each less believable than the last. |
+| **Punchline** | The most ridiculous detail, saved for the end. |
+| **CTA** | One line. |
 
-The 15-second hook is the highest-value real estate in the video: videos that
-hold 80% of viewers past 15 seconds get materially more reach, and retention
-drops off a cliff without one.
+Escalation is the engine: the viewer stays because it keeps getting worse.
 
-**Targets:** 70%+ retention at 30 seconds, 50%+ overall on 5–10 minute videos,
-4%+ CTR.
+**Targets:** 70%+ retention at 30s, 50%+ overall, 4%+ CTR.
 
 ---
 
-## 5. Cadence
+## 6. Cadence
 
-- **Long form:** 6–9 minutes, 1–2 per week. Long enough for mid-roll ads, short
-  enough to hold retention.
-- **Shorts:** 3–5 per week, each one a single beat lifted from a long-form
-  video. Shorts feed discovery; long form earns the money.
-- **Voice:** one narrator voice, never changed. It is as much of the brand as
-  the palette.
+- **Long form:** 6–9 minutes, 1–2 per week. Multiple laws/stories per video
+  suits the format naturally.
+- **Shorts:** 3–5 per week, one story each. Shorts feed discovery, long form
+  earns.
 
 ---
 
-## 6. What to do next
+## 7. What to do next
 
 1. Publish 10–15 videos before judging anything. Early data is noise.
-2. Keep the theme fixed for at least 3 months even if it feels repetitive —
-   repetition is what teaches the algorithm who to show you to.
-3. After ~15 videos, run the feedback loop and let hook style and topic
-   performance drive the next batch.
-4. Only then consider widening the pillars.
+2. Hold the theme for at least 3 months. Repetition teaches the algorithm.
+3. After ~15 videos, run the feedback loop and let hook and topic performance
+   drive the next batch.
 
 ---
 
-## Open item
+## Operational note
 
-Image generation currently runs on **Fal.ai**, because this Google account's
-free tier grants **zero** quota for `gemini-3.1-flash-image` (HTTP 429,
-`limit: 0`). Either enable billing on the Google AI Studio project or leave the
-provider set to `fal` — Fal.ai works and costs roughly $0.0017 per image, which
-is cheaper than Gemini's ~$0.067 anyway.
+Image generation runs on **Fal.ai** (`IMAGE_PROVIDER=fal`), ~$0.0017/image
+versus Gemini's ~$0.067. This Google account's free tier also grants zero quota
+for `gemini-3.1-flash-image` (HTTP 429, `limit: 0`), so Fal is both cheaper and
+the only one that currently works.

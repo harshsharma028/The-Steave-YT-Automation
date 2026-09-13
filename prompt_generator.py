@@ -17,23 +17,24 @@ def generate_image_prompt(chunk_text, chunk_index, project_folder):
     """
     logger.info(f"🎬 Generating visual prompts for segment {chunk_index + 1}...")
 
-    prompt = f"""You are the art director for a premium explainer channel.
-For each scene, describe ONE complete visual moment that carries the idea.
+    prompt = f"""You are the art director for a comedy channel about weird history.
+For each scene, describe ONE complete visual moment staged like a punchline.
 
-The house style is flat vector editorial illustration on a deep navy ground with
-warm amber highlights — closer to a science documentary title sequence than a
-cartoon. People appear only as simple anonymous geometric figures, readable
-through posture and scale, never through facial expression.
+The house style is retro 1960s pulp cartoon poster art on warm cream paper —
+heavy black ink outlines, halftone shading, bold red, teal and mustard. Think
+vintage satirical cartoon, not modern flat vector. Characters are expressive and
+comedic: big reactions, wild poses, faces caught mid-shock or mid-glee. The
+absurdity of what actually happened is the joke, so stage it that way.
 
 Describe:
-- The single idea the image must land
-- The setting or system being shown, with a clear focal point
-- Scale relationships and what dominates the frame
-- Where the light and warm accent falls
-- What makes the composition memorable
+- The single funny or astonishing beat the image must land
+- Who is doing what to whom, and their exact comic reaction
+- The setting, sketched loosely rather than fussed over historically
+- Physical comedy: scale gags, chaos, things going wrong in the background
+- What makes someone stop scrolling
 
 Each image is held on screen for several seconds with a slow camera push, so
-favour compositions with depth and a strong silhouette that reward a long look.
+give it a strong silhouette and enough going on to reward a second look.
 
 NEVER describe anything that implies written words. Do not mention signs,
 signage, marquees, labels, logos, banners, posters, price tags, screens showing
@@ -42,10 +43,10 @@ things as misspelled gibberish. If a scene needs one of these objects, describe
 it as blank and unlettered — "a glowing empty marquee panel", "a plain unmarked
 banner". Carry meaning through shape, scale, light and composition instead.
 
-PREFER: conceptual scenes, systems made visible, striking scale contrast,
-strong silhouettes, generous negative space, one clear subject
-AVOID: facial expressions, stick figures, cartoon gags, cluttered dashboards,
-floating disconnected objects, white backgrounds, clickbait thumbnail energy
+PREFER: characters mid-reaction, physical comedy, absurd scale contrast,
+chaotic background detail, one clear staged gag per frame
+AVOID: static portraits, people standing around doing nothing, modern
+flat-vector corporate looks, dry diagrams, mean-spirited or gory imagery
 
 Script chunk:
 "{chunk_text}"
