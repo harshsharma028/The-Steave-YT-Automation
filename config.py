@@ -10,6 +10,7 @@ TEXT_MODEL = os.getenv("TEXT_MODEL", "gemini-2.5-flash")
 TTS_VOICE = os.getenv("TTS_VOICE", "en-US-AndrewMultilingualNeural")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "projects")
 FAL_MODEL = os.getenv("FAL_MODEL", "fal-ai/nano-banana")
+FAL_KEY = os.getenv("FAL_KEY", "")
 
 # FFmpeg settings
 VIDEO_FPS = 30
