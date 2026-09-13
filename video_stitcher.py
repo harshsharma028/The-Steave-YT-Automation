@@ -105,21 +105,38 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
 
     filter_complex = []
 
+    # The retro print style keeps drawing a paper margin around the artwork
+    # however firmly the prompt forbids it, so trim the outer edge here rather
+    # than relying on the image model to behave.
+    trim = f"crop=iw*{1 - 2 * EDGE_TRIM}:ih*{1 - 2 * EDGE_TRIM}"
+
     for i, seg_dur in enumerate(seg_durations):
         padded_dur = seg_dur + (transition if i > 0 else 0.0)
         num_frames = max(int(padded_dur * VIDEO_FPS), 1)
         z_expr, x_expr, y_expr = _ken_burns(i, num_frames)
-
-        # The retro print style keeps drawing a paper margin around the artwork
-        # however firmly the prompt forbids it, so trim the outer edge here
-        # rather than relying on the image model to behave.
-        filter_str = (
-            f"scale={scale_res},crop=iw*{1 - 2 * EDGE_TRIM}:ih*{1 - 2 * EDGE_TRIM},"
+        motion = (
             f"zoompan=z='{z_expr}':x='{x_expr}':y='{y_expr}':"
             f"d={num_frames}:s={width}x{height}:fps={VIDEO_FPS},"
             f"setsar=1/1,setpts=PTS-STARTPTS"
         )
-        filter_complex.append(f"[{i}:v]{filter_str}[v{i}];")
+
+        if video_format == "short form":
+            # Source art is 16:9. Cropping it to 9:16 would cut the joke out of
+            # frame, and stretching it would distort everything, so the whole
+            # picture sits over a blurred enlargement of itself.
+            work_w, work_h = width * 3 // 2, height * 3 // 2
+            filter_complex.append(
+                f"[{i}:v]split=2[a{i}][b{i}];"
+                f"[a{i}]scale={work_w}:{work_h}:force_original_aspect_ratio=increase,"
+                f"crop={work_w}:{work_h},boxblur=30:2,eq=brightness=-0.18[bg{i}];"
+                f"[b{i}]{trim},scale={work_w}:-2[fg{i}];"
+                f"[bg{i}][fg{i}]overlay=(W-w)/2:(H-h)/2,setsar=1/1[c{i}];"
+                f"[c{i}]{motion}[v{i}];"
+            )
+        else:
+            filter_complex.append(
+                f"[{i}:v]scale={scale_res},{trim},{motion}[v{i}];"
+            )
 
     # Chain the shots together with crossfades
     if transition > 0:
