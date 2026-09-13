@@ -8,35 +8,36 @@ logger = setup_logger("AudioGenerator")
 
 async def generate_audio_async(text, output_path, voice=TTS_VOICE):
     """
-    Asynchronous function to generate TTS audio using Microsoft Edge TTS.
+    Generate TTS audio via Microsoft Edge TTS (async).
     """
-    if not text:
-        logger.error("TTS text is empty. Cannot generate audio.")
+    if not text or not text.strip():
+        logger.error("❌ Empty text, cannot generate audio")
         return False
-    
+
     try:
-        logger.info(f"Generating audio for text snippet (Length: {len(text)} chars)")
+        logger.info(f"🔊 TTS: {len(text)} chars → {output_path}")
         communicate = edge_tts.Communicate(text=text, voice=voice)
         await communicate.save(output_path)
-        
+
         if os.path.exists(output_path):
-            logger.info(f"Audio file created successfully: {output_path}")
+            logger.info(f"✓ Audio saved: {output_path}")
             return True
         else:
-            logger.error("TTS completed but file was not found on disk.")
+            logger.error("❌ TTS completed but file not found")
             return False
-            
+
     except Exception as e:
-        logger.error(f"TTS generation encountered an error: {e}")
+        logger.error(f"❌ TTS error: {str(e)[:80]}")
         return False
+
 
 def generate_audio(text, output_path):
     """
-    Synchronous wrapper for generate_audio_async to allow easy integration
-    in standard synchronous loops.
+    Sync wrapper for generate_audio_async.
+    Runs async TTS generator in event loop.
     """
     try:
         return asyncio.run(generate_audio_async(text, output_path))
     except Exception as e:
-        logger.error(f"Failed to execute asynchronous TTS loop: {e}")
+        logger.error(f"❌ TTS event loop failed: {str(e)[:80]}")
         return False

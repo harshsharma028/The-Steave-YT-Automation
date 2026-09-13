@@ -38,64 +38,64 @@ def run_interactive_pipeline(input_path, video_format="long form"):
     project_folder = ""
     state = {}
 
-    # ---------------------------------------------------------
-    # PHASE 1: SCRIPT ANALYSIS & RESUME LOGIC
-    # ---------------------------------------------------------
+    # ========== PHASE 1: ANALYZE SCRIPT OR RESUME PROJECT ==========
     if os.path.isdir(input_path):
+        # Resume existing project from folder
         project_folder = input_path
         state_path = os.path.join(project_folder, state_file)
         if os.path.exists(state_path):
-            logger.info(f"Resuming project: {project_folder}")
+            logger.info(f"📂 Resuming: {project_folder}")
             state = load_state(state_path)
-            # Retrieve video_format from state, defaulting to "long form" if missing (for backwards compatibility)
             video_format = state.get("video_format", "long form")
         else:
-            logger.error("No blueprint.json found in the provided folder.")
+            logger.error("❌ No blueprint.json found in folder")
             return
     elif os.path.isfile(input_path):
+        # New project: analyze script
         print("\n" + "="*60)
-        print("PHASE 1: SCRIPT ANALYSIS WITH GEMINI")
+        print("PHASE 1: SCRIPT ANALYSIS")
         print("="*60)
-        logger.info("\n--- PHASE 1: Script Analysis ---")
+        logger.info("📝 Phase 1: Script Analysis")
+
         with open(input_path, 'r', encoding='utf-8') as f:
             script_text = f.read()
-            
+
         state = analyze_script(script_text)
         if not state:
-            logger.error("Failed to analyze script.")
+            logger.error("❌ Script analysis failed")
             return
-            
+
         title = state.get("title", "Untitled Project")
         state["video_format"] = video_format
         project_folder = create_project_folder(title, OUTPUT_DIR, video_format)
-        
-        # Track if segments have been broken into sub-scenes yet
+
+        # Initialize phase completion flags
         state["segments_flattened"] = False
         state["subtitles_generated"] = False
         state["video_generated"] = False
-        
+
         save_state(os.path.join(project_folder, state_file), state)
-        logger.info(f"Project initialized at: {project_folder}")
+        logger.info(f"✓ Project created: {project_folder}")
     else:
-        logger.error("Invalid input path.")
+        logger.error("❌ Invalid input path")
         return
 
     state_path = os.path.join(project_folder, state_file)
 
-    # ---------------------------------------------------------
-    # PHASE 2: PROMPT GENERATION (Multi-Image Breakdown)
-    # ---------------------------------------------------------
+    # ========== PHASE 2: BREAK SEGMENTS INTO VISUAL SUB-SCENES ==========
     if not state.get("segments_flattened"):
         print("\n" + "="*60)
-        print("PHASE 2: STORYBOARD & VISUAL PROMPT GENERATION")
+        print("PHASE 2: STORYBOARD GENERATION")
         print("="*60)
-        logger.info("\n--- PHASE 2: Generating Visual Prompts & Sub-Scenes ---")
+        logger.info("🎨 Phase 2: Visual Prompt Generation")
+
         final_segments = []
-        
+        total_chunks = len(state["segments"])
+
         for i, chunk in enumerate(state["segments"]):
-            logger.info(f"Breaking narrative chunk {i+1} into sub-scenes...")
+            logger.info(f"  Segment {i+1}/{total_chunks}")
             sub_scenes = generate_image_prompt(chunk["text"], i, project_folder)
-            
+
             if sub_scenes:
                 for j, scene in enumerate(sub_scenes):
                     new_seg = {
@@ -109,276 +109,282 @@ def run_interactive_pipeline(input_path, video_format="long form"):
                     }
                     final_segments.append(new_seg)
             else:
-                logger.error(f"Failed to generate sub-scenes for chunk {i+1}")
+                logger.error(f"❌ Prompt generation failed for segment {i+1}")
                 return
-        
-        # Replace chunks with flattened scenes
+
+        # Flatten: replace chunks with visual scenes
         state["segments"] = final_segments
         state["segments_flattened"] = True
-        
-        # Initialize filenames for final segments
+
+        # Generate output filenames (one-time operation)
         for i, seg in enumerate(state["segments"]):
             safe_phase = slugify(seg.get("narrative_phase", "scene"))
             seg["image_filename"] = f"segment_{i+1:03d}_{safe_phase}.png"
             seg["audio_filename"] = f"audio_{i+1:03d}.mp3"
-            
-        save_state(state_path, state)
-        logger.info(f"Total visual scenes determined: {len(state['segments'])}")
 
-    # ---------------------------------------------------------
-    # PHASE 3: AUDIO & SUBTITLES
-    # ---------------------------------------------------------
+        save_state(state_path, state)
+        logger.info(f"✓ Storyboard: {len(state['segments'])} visual scenes")
+
+    # ========== PHASE 3: GENERATE AUDIO & SUBTITLES ==========
     print("\n" + "="*60)
-    print("PHASE 3: AUDIO & SUBTITLES GENERATION")
+    print("PHASE 3: AUDIO & SUBTITLES")
     print("="*60)
-    logger.info("\n--- PHASE 3: Audio & Subtitles ---")
+    logger.info("🔊 Phase 3: Audio & Subtitles Generation")
+
     full_audio_paths = []
+    total_segments = len(state["segments"])
+
+    # Generate per-segment audio (TTS)
     for i, segment in enumerate(state["segments"]):
         seg_audio_path = os.path.join(project_folder, segment["audio_filename"])
         full_audio_paths.append(seg_audio_path)
-        
+
         if not segment.get("audio_generated"):
+            logger.info(f"  Audio {i+1}/{total_segments}...")
             if generate_audio(segment['text'], seg_audio_path):
                 segment["audio_generated"] = True
-                save_state(state_path, state)
             else:
-                logger.error(f"Audio generation failed for segment {i+1}.")
+                logger.error(f"❌ Audio generation failed for segment {i+1}")
                 return
 
-    # Combine master audio and make subtitles
+    # Batch state save after all audio is done (not per-segment)
+    save_state(state_path, state)
+
+    # Combine audio + generate subtitles (if not done)
     audio_path = os.path.join(project_folder, "audio.mp3")
     subtitle_path = os.path.join(project_folder, "subtitles.srt")
-    
+
     if not state.get("subtitles_generated"):
-        logger.info("Combining audio segments and generating subtitles...")
+        logger.info("🎬 Concatenating audio & generating subtitles...")
         concat_list_path = os.path.join(project_folder, "audio_list.txt")
+
+        # Create FFmpeg concat manifest
         with open(concat_list_path, "w") as f:
             for p in full_audio_paths:
                 f.write(f"file '{os.path.basename(p)}'\n")
-        
-        subprocess.run(["ffmpeg", "-f", "concat", "-safe", "0", "-i", concat_list_path, "-c", "copy", "-y", audio_path], capture_output=True)
-        
+
+        # Concatenate audio files
+        subprocess.run(
+            ["ffmpeg", "-f", "concat", "-safe", "0", "-i", concat_list_path, "-c", "copy", "-y", audio_path],
+            capture_output=True
+        )
+
+        # Generate subtitles via Whisper
         if generate_subtitles(audio_path, subtitle_path, video_format=video_format):
             state["subtitles_generated"] = True
             save_state(state_path, state)
+            logger.info("✓ Audio & subtitles complete")
         else:
-            logger.error("Subtitle generation failed.")
+            logger.error("❌ Subtitle generation failed")
             return
 
-    # ---------------------------------------------------------
-    # PHASE 4: INTERACTIVE IMAGE GENERATION
-    # ---------------------------------------------------------
+    # ========== PHASE 4: GENERATE IMAGES ==========
     print("\n" + "="*60)
-    print("PHASE 4: INTERACTIVE IMAGE GENERATION")
+    print("PHASE 4: IMAGE GENERATION")
     print("="*60)
-    logger.info("\n--- PHASE 4: Interactive Image Generation ---")
-    
-    # Check if there are any ungenerated images
+    logger.info("🖼️  Phase 4: Image Generation")
+
+    # Determine if any images are ungenerated
     has_ungenerated = any(not seg.get("image_generated") for seg in state["segments"])
     manual_verify = True
+    image_provider = state.get("image_provider", "gemini")
+
     if has_ungenerated:
-        manual_verify = input("\nDo you want to manually verify each image prompt? (yes/no): ").strip().lower() in ['yes', 'y']
+        manual_verify = input("\nManually verify prompts? (yes/no): ").strip().lower() in ['yes', 'y']
+
+        # Select image provider (Gemini is faster, Fal has more models)
+        prov_choice = input("Provider (gemini/fal) [default: gemini]: ").strip().lower()
+        image_provider = "fal" if "fal" in prov_choice else "gemini"
+        state["image_provider"] = image_provider
+        save_state(state_path, state)
     
-    background_tasks = {}
+    background_tasks = {}  # Tracks running image generation threads
 
     def check_background_tasks():
-        """Checks for completed background tasks and processes their results."""
-        completed_indices = []
+        """Check completed background tasks & update state (non-blocking)."""
+        completed = []
         for idx, task in background_tasks.items():
             if not task["thread"].is_alive():
-                completed_indices.append(idx)
-                res_container = task["result"]
-                segment = task["segment"]
-                if res_container:
-                    success, cost_usd = res_container[0]
+                completed.append(idx)
+                res = task["result"]
+                seg = task["segment"]
+
+                if res:
+                    success, cost_usd = res[0]
                     if success:
-                        segment["image_generated"] = True
-                        segment["image_cost_usd"] = cost_usd
-                        save_state(state_path, state)
+                        seg["image_generated"] = True
+                        seg["image_cost_usd"] = cost_usd
                         cost_inr = cost_usd * USD_TO_INR_RATE
-                        print(f"\n[BACKGROUND SUCCESS] Image generated for Segment {idx+1}: {segment['image_filename']} (Cost: ${cost_usd:.4f} / approx. ₹{cost_inr:.2f})")
+                        logger.info(f"✓ BG: Segment {idx+1} | ${cost_usd:.4f} (₹{cost_inr:.2f})")
                     else:
-                        print(f"\n[BACKGROUND FAILED] Image generation failed for Segment {idx+1}.")
+                        logger.warning(f"✗ BG: Segment {idx+1} failed")
                 else:
-                    print(f"\n[BACKGROUND FAILED] Image generation failed or was aborted for Segment {idx+1}.")
-        for idx in completed_indices:
-            del background_tasks[idx]
+                    logger.warning(f"✗ BG: Segment {idx+1} aborted")
+
+        # Batch state save for all completed tasks
+        if completed:
+            save_state(state_path, state)
+            for idx in completed:
+                del background_tasks[idx]
 
     for i, segment in enumerate(state["segments"]):
-        # Periodically check on any finished background tasks
+        # Check for completed background tasks
         check_background_tasks()
 
+        # Skip if already generated
         if segment.get("image_generated"):
             continue
 
-        # Recovery check: If the image file already exists on disk, mark it as generated to prevent duplicate billing
+        # Recovery: check if image already exists on disk (prevents re-billing)
         img_path = os.path.join(project_folder, segment["image_filename"])
-        if os.path.exists(img_path) and not segment.get("image_generated"):
+        if os.path.exists(img_path):
             segment["image_generated"] = True
             save_state(state_path, state)
-            print(f"  [RECOVERY] Found Segment {i+1} image on disk ({segment['image_filename']}). Marking as generated to save API cost.")
-
-        if segment.get("image_generated"):
+            logger.info(f"📂 Recovery: Segment {i+1} already on disk (saved API cost)")
             continue
 
-        # If a background task is already running for this segment, skip and wait up to 5 min
+        # If task is already running in background, wait or skip
         if i in background_tasks:
-            if manual_verify:
-                print(f"\n[WAIT] Background image generation for Segment {i+1} is currently running. Waiting up to 5 minutes...")
-            else:
-                print(f"\n[WAIT] Segment {i+1} image generation is currently running in the background. Waiting...")
+            logger.info(f"⏳ Segment {i+1}: waiting for background task...")
             task = background_tasks[i]
-            
+
+            # Wait up to 5 min for completion
             waited = 0
-            timeout_limit = 300
-            check_interval = 10
-            while task["thread"].is_alive() and waited < timeout_limit:
-                time.sleep(check_interval)
-                waited += check_interval
+            max_wait = 300
+            while task["thread"].is_alive() and waited < max_wait:
+                time.sleep(10)
+                waited += 10
                 check_background_tasks()
                 if waited % 60 == 0:
-                    print(f"  [STATUS] Still waiting for Segment {i+1} image generation... ({waited // 60} min elapsed)")
-                    active_tasks = [f"Segment {k+1}" for k in background_tasks if k != i]
-                    if active_tasks:
-                        print(f"  [STATUS] Other active background processes: {', '.join(active_tasks)}")
+                    logger.info(f"  ⏳ {waited//60} min elapsed...")
 
+            # If still running, move on (task continues in background)
             if task["thread"].is_alive():
-                print(f"  [STATUS] Still running in the background. Moving to the next segment...")
+                logger.info(f"⏸️  Backgrounding: segment {i+1} (>5 min, proceeding)")
                 continue
             else:
                 check_background_tasks()
                 if segment.get("image_generated"):
                     continue
 
+        # ========== Manual Verification Mode ==========
         if manual_verify:
-            print(f"\n" + "─"*60)
-            print(f"SEGMENT {i+1} / {len(state['segments'])}  [{segment.get('narrative_phase', 'Unknown').upper()}]")
-            print(f"─"*60)
-            print(f" Dialogue: \"{segment['text']}\"")
-            print(f" AI Suggested Prompt: {segment['image_prompt']}")
-            print(f"─"*60)
+            print(f"\n{'─'*60}")
+            print(f"SEGMENT {i+1}/{len(state['segments'])} | {segment.get('narrative_phase', 'Scene').upper()}")
+            print(f"{'─'*60}")
+            print(f"Dialogue: \"{segment['text'][:60]}...\"")
+            print(f"Prompt: {segment['image_prompt'][:80]}...")
+            print(f"{'─'*60}")
 
-            change = input("\nDo you want to change this prompt? (yes/no): ").strip().lower()
-            if change in ['yes', 'y']:
-                new_prompt = input("Enter your new custom prompt: ").strip()
+            if input("\nEdit prompt? (yes/no): ").strip().lower() in ['yes', 'y']:
+                new_prompt = input("New prompt: ").strip()
                 if new_prompt:
                     segment['image_prompt'] = new_prompt
                     save_state(state_path, state)
-                    print("Prompt updated.")
-        else:
-            print(f"\n[GENERATING] Segment {i+1} / {len(state['segments'])}: Prompting Gemini...")
 
-        img_path = os.path.join(project_folder, segment["image_filename"])
+        else:
+            logger.info(f"📸 Segment {i+1}/{len(state['segments'])}")
+
+        # ========== START IMAGE GENERATION THREAD ==========
         aspect_ratio = "9:16" if video_format == "short form" else "16:9"
-        
         result_container = []
+
         gen_thread = threading.Thread(
             target=generate_image,
-            args=(segment['image_prompt'], img_path, result_container, False, aspect_ratio)  # verbose=False to keep background thread quiet
+            args=(segment['image_prompt'], img_path, result_container, False, aspect_ratio, image_provider)
         )
-        
-        task_data = {
-            "thread": gen_thread,
-            "segment": segment,
-            "result": result_container
-        }
-        
+
         gen_thread.start()
-        
-        # Wait up to 5 minutes with 1-minute status updates
+
+        # Wait up to 5 min with status updates
         waited = 0
-        timeout_limit = 300
-        check_interval = 10
-        while gen_thread.is_alive() and waited < timeout_limit:
-            time.sleep(check_interval)
-            waited += check_interval
+        max_wait = 300
+        while gen_thread.is_alive() and waited < max_wait:
+            time.sleep(10)
+            waited += 10
             check_background_tasks()
             if waited % 60 == 0:
-                print(f"  [STATUS] Still waiting for Segment {i+1} image generation... ({waited // 60} min elapsed)")
-                active_tasks = [f"Segment {k+1}" for k in background_tasks]
-                if active_tasks:
-                    print(f"  [STATUS] Active background processes: {', '.join(active_tasks)}")
-        
+                logger.info(f"  ⏳ Segment {i+1}: {waited//60} min elapsed")
+
         if gen_thread.is_alive():
-            # If it takes more than 5 minutes, move to the next image and keep it running in the background
-            print(f"\n[BACKGROUNDED] Segment {i+1} is taking longer than 5 minutes. Backgrounding task and proceeding to the next segment...")
-            background_tasks[i] = task_data
+            # Timeout: move to background task tracking
+            logger.info(f"⏸️  Backgrounding: segment {i+1} (>5 min)")
+            background_tasks[i] = {
+                "thread": gen_thread,
+                "segment": segment,
+                "result": result_container
+            }
         else:
-            # Check results of the wait
+            # Completed within timeout
             if result_container:
                 success, cost_usd = result_container[0]
                 if success:
                     segment['image_generated'] = True
-                    segment['image_cost_usd'] = cost_usd # Store cost
+                    segment['image_cost_usd'] = cost_usd
                     save_state(state_path, state)
                     cost_inr = cost_usd * USD_TO_INR_RATE
-                    print(f"\n[SUCCESS] Image saved: {segment['image_filename']} (Cost: ${cost_usd:.4f} / approx. ₹{cost_inr:.2f})")
-                    
+                    logger.info(f"✓ Segment {i+1}: ${cost_usd:.4f} (₹{cost_inr:.2f})")
+
                     if manual_verify:
-                        proceed = input("Check the image in the project folder. Type 'next' to continue, or 'exit' to pause: ").strip().lower()
-                        if proceed == 'exit':
-                            if background_tasks:
-                                print("\n[WARNING] Some background image tasks are still running. Exiting will abort their updates to the state, though the files will still save if they complete.")
-                            print(f"Pipeline paused at segment {i+1}. Run option 2 later to resume.")
+                        if input("Check image. Continue? (yes/no): ").strip().lower() != 'yes':
+                            logger.info(f"⏸️  Pipeline paused at segment {i+1}")
                             sys.exit(0)
                 else:
-                    print(f"Failed to generate image for Segment {i+1} on this attempt. You can retry it when resuming or running the script again.")
+                    logger.warning(f"✗ Segment {i+1}: generation failed (retry on resume)")
             else:
-                print(f"Generation did not complete successfully for Segment {i+1}.")
+                logger.warning(f"✗ Segment {i+1}: no result")
 
-    # ---------------------------------------------------------
-    # PHASE 5: FINAL STITCHING VERIFICATION
-    # ---------------------------------------------------------
+    # ========== PHASE 5: STITCH FINAL VIDEO ==========
     print("\n" + "="*60)
-    print("PHASE 5: FINAL VIDEO STITCHING")
+    print("PHASE 5: VIDEO STITCHING")
     print("="*60)
-    logger.info("\n--- PHASE 5: Final Video Stitching ---")
-    
-    # 1. Sync any remaining background threads before we proceed
+    logger.info("🎬 Phase 5: Final Video Stitching")
+
+    # Sync remaining background tasks before stitching
     if background_tasks:
-        print(f"\n[SYNC] Waiting for {len(background_tasks)} outstanding background image generation tasks to complete...")
+        logger.info(f"⏳ Waiting for {len(background_tasks)} background tasks...")
         waited = 0
-        check_interval = 10
         while background_tasks:
-            time.sleep(check_interval)
-            waited += check_interval
+            time.sleep(10)
+            waited += 10
             check_background_tasks()
             if waited % 60 == 0:
-                active_tasks = [f"Segment {k+1}" for k in background_tasks]
-                print(f"  [STATUS] Still waiting for background tasks: {', '.join(active_tasks)} ({waited // 60} min elapsed)")
+                active = [f"Seg {k+1}" for k in background_tasks]
+                logger.info(f"  ⏳ Still waiting: {', '.join(active)}")
 
-    # 2. Safety check: verify if ALL images have been successfully generated
-    missing_images = []
-    for idx, seg in enumerate(state["segments"]):
-        if not seg.get("image_generated"):
-            missing_images.append(idx + 1)
-
-    if missing_images:
-        print(f"\n[ERROR] Video generation cannot proceed because some images are not generated:")
-        for num in missing_images:
-            print(f" - Segment {num}: \"{state['segments'][num-1]['text'][:60]}...\"")
-        print("\nPlease run Option 2 to resume the project and regenerate/complete these missing images first.")
+    # Verify all images exist
+    missing = [idx + 1 for idx, seg in enumerate(state["segments"]) if not seg.get("image_generated")]
+    if missing:
+        logger.error(f"❌ Missing images: segments {missing}")
+        logger.info("Run option 2 to resume & complete")
         return
 
-    # Proceed with stitching if all images are ready
+    # Stitch video
     if not state.get("video_generated"):
-        final_check = input("\nAll segments are ready! Do you want to stitch the final video now? (yes/no): ").strip().lower()
-        if final_check in ['yes', 'y']:
-            add_audio = input("Include voiceover? (yes/no): ").strip().lower() in ['yes', 'y']
-            add_captions = input("Include on-screen subtitles? (yes/no): ").strip().lower() in ['yes', 'y']
-            
+        if input("\n✓ All ready! Stitch video? (yes/no): ").strip().lower() in ['yes', 'y']:
+            add_audio = input("Add voiceover? (yes/no): ").strip().lower() in ['yes', 'y']
+            add_captions = input("Add subtitles? (yes/no): ").strip().lower() in ['yes', 'y']
+
             output_video_path = os.path.join(project_folder, "final_video.mp4")
-            if create_video(project_folder, state["segments"], audio_path, subtitle_path, output_video_path, include_audio=add_audio, include_captions=add_captions, video_format=video_format):
+            if create_video(
+                project_folder,
+                state["segments"],
+                audio_path,
+                subtitle_path,
+                output_video_path,
+                include_audio=add_audio,
+                include_captions=add_captions,
+                video_format=video_format
+            ):
                 state["video_generated"] = True
                 save_state(state_path, state)
-                print(f"\n[>>> PIPELINE COMPLETE! <<<]")
-                print(f"Final Video: {output_video_path}\n")
+                logger.info(f"✓✓✓ COMPLETE! Video: {output_video_path}\n")
             else:
-                logger.error("Final stitching failed.")
+                logger.error("❌ Stitching failed")
         else:
-            print(f"Paused before stitching. Use Option 2 to finish later.")
+            logger.info("⏸️  Paused. Run option 2 to resume")
     else:
-        logger.info("Video already exists for this project.")
+        logger.info("✓ Video already generated")
 
 
 

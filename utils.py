@@ -6,51 +6,49 @@ import sys
 
 def setup_logger(name):
     """
-    Sets up a standardized logger for the pipeline.
-    Includes proper spacing (\n) to make reading logs easier.
-    Logs are printed to the console and saved to 'pipeline.log'.
+    Setup dual logging: console (clean) + file (detailed).
+    Prevents duplicate logs by checking existing handlers.
     """
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
-    
-    # Only add handlers if they don't already exist to prevent duplicate logs
+
     if not logger.handlers:
-        # Create distinct formatters for console (clean) and file (detailed) logging
-        console_formatter = logging.Formatter('[%(name)s] %(levelname)s: %(message)s')
-        file_formatter = logging.Formatter('\n[%(asctime)s] === %(name)s ===\n%(levelname)s: %(message)s')
-        
-        # Console Handler
+        # Console: clean format
+        console_fmt = logging.Formatter('[%(name)s] %(levelname)s: %(message)s')
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(console_formatter)
+        console_handler.setFormatter(console_fmt)
         logger.addHandler(console_handler)
-        
-        # File Handler
+
+        # File: detailed format with timestamp
+        file_fmt = logging.Formatter('\n[%(asctime)s] === %(name)s ===\n%(levelname)s: %(message)s')
         file_handler = logging.FileHandler("pipeline.log", encoding='utf-8')
-        file_handler.setFormatter(file_formatter)
+        file_handler.setFormatter(file_fmt)
         logger.addHandler(file_handler)
-        
+
     return logger
+
 
 def slugify(text):
     """
-    Converts text to a URL-friendly slug.
-    Used for creating safe folder names.
+    Convert text → URL-safe slug (for folder names).
+    Removes special chars, replaces spaces with underscores.
     """
     text = text.lower()
-    text = re.sub(r'[^\w\s-]', '', text)
-    text = re.sub(r'[\s_-]+', '_', text).strip('_')
+    text = re.sub(r'[^\w\s-]', '', text)  # Remove special chars
+    text = re.sub(r'[\s_-]+', '_', text).strip('_')  # Consolidate separators
     return text
+
 
 def create_project_folder(script_title, base_dir="projects", video_format="long form"):
     """
-    Creates a timestamped project folder nested inside a format directory and a daily date folder
-    (e.g., YYYY-MM-DD) to store all generated assets.
+    Create timestamped project folder: base/format/date/title_timestamp/
+    Returns the full path to the project directory.
     """
     format_dir = "short form video" if video_format == "short form" else "long form video"
-    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     folder_name = f"{slugify(script_title)}_{timestamp}"
-    path = os.path.join(base_dir, format_dir, today_str, folder_name)
+    path = os.path.join(base_dir, format_dir, today, folder_name)
     os.makedirs(path, exist_ok=True)
     return path
 

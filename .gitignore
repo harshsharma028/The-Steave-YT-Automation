@@ -5,10 +5,20 @@ __pycache__/
 
 # Environments
 .env
+.env.local
+.env.*.local
 .venv
 venv/
 ENV/
 env/
+
+# YouTube & API Credentials
+youtube_client_secret.json
+youtube_token.pickle
+*_credentials.json
+*_token.*
+*.key
+*.pem
 
 # Logs
 pipeline.log
@@ -18,6 +28,14 @@ pipeline.log
 projects/
 testing_artifacts/
 temp_script_input.txt
+image_testing/
+
+# Analytics Database & Reports
+channel_analytics.db
+channel_analytics.db-shm
+channel_analytics.db-wal
+*_channel_report.json
+test_channel_report.json
 
 # OS metadata
 .DS_Store

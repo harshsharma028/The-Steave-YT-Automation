@@ -1,0 +1,18 @@
+# Phase 2: Script Generation Engine Dependencies
+
+# Gemini API (for script generation)
+google-genai>=0.1.0
+
+# HTTP & API requests
+requests>=2.31.0
+
+# Environment management
+python-dotenv>=1.0.0
+
+# Existing dependencies (from Phase 1 + main project)
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.2.0
+google-api-python-client>=2.100.0
+edge-tts>=6.1.12
+openai-whisper>=20231117
+fal-client>=0.4.0

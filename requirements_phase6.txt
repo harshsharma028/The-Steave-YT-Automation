@@ -1,0 +1,22 @@
+# Phase 6: Analytics & Self-Improvement Dependencies
+
+# YouTube API
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.2.0
+google-api-python-client>=2.100.0
+
+# VidIQ API
+requests>=2.31.0
+
+# Environment management
+python-dotenv>=1.0.0
+
+# Scheduling (optional, for automated loops)
+APScheduler>=3.10.0
+
+# Data processing (already installed from previous phases)
+# google-genai>=0.1.0
+# Pillow>=9.0.0
+# edge-tts>=6.1.12
+# openai-whisper>=20231117
+# fal-client>=0.4.0
