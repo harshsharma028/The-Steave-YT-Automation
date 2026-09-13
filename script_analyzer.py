@@ -2,7 +2,7 @@ import json
 import time
 from google import genai
 from google.genai import types
-from config import CHAT_API_KEY, TEXT_MODEL
+from config import CHAT_API_KEY, TEXT_MODEL, ACTIVE_CHANNEL
 from utils import setup_logger, classify_api_error, parse_json_lenient
 
 logger = setup_logger("ScriptAnalyzer")
@@ -16,7 +16,7 @@ def analyze_script(script_text):
     """
     logger.info("📊 Analyzing script structure with Gemini...")
 
-    prompt = f"""You are a retention editor for a top-tier explainer channel.
+    prompt = f"""{ACTIVE_CHANNEL.script_persona}
 Break the following script into narrative segments.
 
 CRITICAL RULES:

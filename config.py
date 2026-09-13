@@ -1,15 +1,20 @@
 import os
 from dotenv import load_dotenv
 
+from channels import load_channel
+
 load_dotenv()
 
 CHAT_API_KEY = os.getenv("CHAT_API_KEY")
 IMAGE_API_KEY = os.getenv("IMAGE_API_KEY")
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "gemini-3.1-flash-image")
 TEXT_MODEL = os.getenv("TEXT_MODEL", "gemini-3.1-flash-lite")
-TTS_VOICE = os.getenv("TTS_VOICE", "en-US-BrianMultilingualNeural")
-# Slightly faster than default. Andrew at 0% read like a nature documentary.
-TTS_RATE = os.getenv("TTS_RATE", "+8%")
+# Active channel profile. Override per run with CHANNEL=weird_history.
+ACTIVE_CHANNEL = load_channel()
+
+# Voice belongs to the channel; the env vars are an escape hatch, not the default.
+TTS_VOICE = os.getenv("TTS_VOICE") or ACTIVE_CHANNEL.voice
+TTS_RATE = os.getenv("TTS_RATE") or ACTIVE_CHANNEL.rate
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "projects")
 FAL_MODEL = os.getenv("FAL_MODEL", "fal-ai/nano-banana")
 FAL_KEY = os.getenv("FAL_KEY", "")
@@ -47,63 +52,13 @@ IMAGE_TOKENS_PER_IMAGE_1K = 1120     # 1120 tokens per 1K image (default)
 USD_TO_INR_RATE = 95.20              # Current approximate conversion rate
 
 # ============================================================
-# CHANNEL IDENTITY — "Hold On, That Really Happened"
-# Weird history, told for laughs. Locked art direction: the
-# retro pulp palette is the brand, and holding it across every
-# scene makes independently-generated images read as one channel.
+# CHANNEL IDENTITY — supplied by the active channel profile in channels/
 # ============================================================
 
-CHANNEL_NAME = "Hold On, That Really Happened"
+CHANNEL_NAME = ACTIVE_CHANNEL.name
 
-# Master Style Prompt
-MASTER_STYLE_PROMPT = """
-ABSOLUTE RULE, APPLIES BEFORE EVERYTHING ELSE: render NO text of any kind.
-No letters, no words, no numbers, no signage, no marquee lettering, no logos,
-no labels, no captions, no watermarks. Signs, screens, marquees, banners and
-posters must be left completely BLANK — glowing empty panels, plain coloured
-shapes. If a described object would normally carry writing, draw it smooth and
-unlettered. Any text in the image is a failed render.
-
-Retro 1960s pulp cartoon poster art. Vintage comic energy — the look of an old
-adventure paperback cover or a mid-century satirical cartoon, hand-inked and
-printed on aged paper.
-
-COLOR PALETTE (use these and only these — this is the channel's brand):
-- Warm cream paper background (#F2E8D5) as the ground, with subtle halftone grain
-- Bold vintage red (#D6473E)
-- Deep teal (#2A7E7B)
-- Mustard gold (#E8A33D)
-- Near-black ink (#1E1A17) for outlines and shadow
-Printed, slightly worn, warm. Never neon, never pastel, never digital-looking.
-
-FIGURES:
-- Expressive cartoon characters with big comic reactions — this is the joke
-- Heavy black ink outlines, bold confident linework
-- Exaggerated poses, wild gestures, faces mid-shock, mid-glee or mid-panic
-- Period-appropriate clothing drawn loosely, not historically fussy
-
-VISUAL LANGUAGE:
-- Hand-inked comic style with halftone dot shading
-- Flat printed colour that slightly misregisters, like old offset printing
-- One clear comedic moment per frame, staged like a punchline
-- A strong sense of motion in the poses and action
-
-COMPOSITION:
-- FULL BLEED, THIS IS CRITICAL: the illustrated scene must reach all four edges
-  and all four corners of the image. Every part of the canvas is drawn scenery.
-  No borders, frames or panel outlines. No margins of bare paper. No diagonal or
-  angled split leaving part of the canvas empty. No blank caption strip. The
-  picture is not an object sitting on a background — it IS the whole background.
-- Wide framing, clear visual hierarchy, the gag readable instantly
-- Keep the lower fifth of the frame calm and uncluttered — subtitles sit there
-- Must read at phone size: big shapes, strong silhouettes, high contrast
-
-STRICTLY AVOID:
-- Any text, letters, numbers, words, labels, signage, UI or watermarks
-- Modern flat-vector or corporate illustration looks
-- Neon or candy colours, gradients, glossy 3D rendering, photorealism
-- Gore, cruelty played straight, or anything mean-spirited — the tone is
-  affectionate disbelief, never nasty
+# Art direction wrapped around every image prompt.
+MASTER_STYLE_PROMPT = ACTIVE_CHANNEL.style_prompt.rstrip() + """
 
 SCENE:
 {scene_description}

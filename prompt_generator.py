@@ -3,7 +3,7 @@ import json
 import os
 from google import genai
 from google.genai import types
-from config import CHAT_API_KEY, TEXT_MODEL
+from config import CHAT_API_KEY, TEXT_MODEL, ACTIVE_CHANNEL
 from utils import setup_logger, classify_api_error, parse_json_lenient
 
 logger = setup_logger("PromptGenerator")
@@ -31,27 +31,13 @@ def generate_image_prompt(chunk_text, chunk_index, project_folder):
 
     logger.info(f"🎬 Generating visual prompts for segment {chunk_index + 1}...")
 
-    prompt = f"""You are the art director for a comedy channel about weird history.
-For each scene, describe ONE complete visual moment staged like a punchline.
-
-The house style is retro 1960s pulp cartoon poster art on warm cream paper —
-heavy black ink outlines, halftone shading, bold red, teal and mustard. Think
-vintage satirical cartoon, not modern flat vector. Characters are expressive and
-comedic: big reactions, wild poses, faces caught mid-shock or mid-glee. The
-absurdity of what actually happened is the joke, so stage it that way.
-
-Describe:
-- The single funny or astonishing beat the image must land
-- Who is doing what to whom, and their exact comic reaction
-- The setting, sketched loosely rather than fussed over historically
-- Physical comedy: scale gags, chaos, things going wrong in the background
-- What makes someone stop scrolling
+    prompt = f"""{ACTIVE_CHANNEL.art_director}
 
 PACING — this matters as much as the art. Split the chunk into 2 to 4 scenes,
-cutting on each new idea, each new joke and each turn in the story. One image
-per chunk is too slow: a held shot longer than about eight seconds loses the
-viewer. Short chunks get 2 scenes, longer ones get 3 or 4. Never return a single
-scene unless the chunk is one very short sentence.
+cutting on each new idea and each turn in the script. One image per chunk is too
+slow: a held shot longer than about eight seconds loses the viewer. Short chunks
+get 2 scenes, longer ones get 3 or 4. Never return a single scene unless the
+chunk is one very short sentence.
 
 Each image is held for several seconds under a slow camera push, so give it a
 strong silhouette and enough going on to reward a second look.
@@ -62,11 +48,6 @@ text, books, newspapers or tickets with writing. The image model renders such
 things as misspelled gibberish. If a scene needs one of these objects, describe
 it as blank and unlettered — "a glowing empty marquee panel", "a plain unmarked
 banner". Carry meaning through shape, scale, light and composition instead.
-
-PREFER: characters mid-reaction, physical comedy, absurd scale contrast,
-chaotic background detail, one clear staged gag per frame
-AVOID: static portraits, people standing around doing nothing, modern
-flat-vector corporate looks, dry diagrams, mean-spirited or gory imagery
 
 Script chunk:
 "{chunk_text}"

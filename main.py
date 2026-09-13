@@ -13,6 +13,7 @@ from subtitle_generator import generate_subtitles
 from prompt_generator import generate_image_prompt
 from image_generator import generate_image
 from video_stitcher import create_video
+from thumbnail import generate_thumbnail
 from utils import create_project_folder, setup_logger, slugify
 from config import OUTPUT_DIR, USD_TO_INR_RATE, IMAGE_PROVIDER
 
@@ -379,6 +380,18 @@ def run_interactive_pipeline(input_path, video_format="long form"):
                 state["video_generated"] = True
                 save_state(state_path, state)
                 logger.info(f"✓✓✓ COMPLETE! Video: {output_video_path}\n")
+
+                # ========== THUMBNAIL (optional) ==========
+                if not state.get("thumbnail_generated"):
+                    if input("Generate a thumbnail? (yes/no): ").strip().lower() in ['yes', 'y']:
+                        thumb = generate_thumbnail(
+                            state.get("title", "Untitled"),
+                            project_folder,
+                            state.get("image_provider"),
+                        )
+                        if thumb:
+                            state["thumbnail_generated"] = True
+                            save_state(state_path, state)
             else:
                 logger.error("❌ Stitching failed")
         else:
