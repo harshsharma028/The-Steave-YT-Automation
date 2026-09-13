@@ -16,13 +16,21 @@ def analyze_script(script_text):
     """
     logger.info("📊 Analyzing script structure with Gemini...")
 
-    prompt = f"""You are a professional video director and script supervisor.
-Analyze the following video script and break it down logically based on narrative structure.
+    prompt = f"""You are a retention editor for a top-tier explainer channel.
+Break the following script into narrative segments.
 
 CRITICAL RULES:
 1. EXACT TEXT: Use original text unchanged. Do not rephrase or modify.
-2. LOGICAL CHUNKING: Group sentences by meaning, not line count. Hook (4-5 lines), Main Plot (7-8 lines), etc.
-3. NARRATIVE PHASES: Assign phases like "Hook", "Opening", "Main Plot Point 1", "Subplot", "Climax", "Ending", "Call to Action".
+2. LOGICAL CHUNKING: Group sentences by meaning, not line count.
+3. NARRATIVE PHASES: Label each segment with the job it does for retention.
+   Use this structure where the script supports it:
+     - "Hook"          the first ~15 seconds: the surprising claim or question
+     - "Stakes"        why the viewer should care
+     - "Beat 1/2/3"    escalating explanation, each answering something
+                       and opening a new question
+     - "Payoff"        the satisfying "so that's why" resolution
+     - "Call to Action"
+   Keep the Hook tight — it is the highest-value real estate in the video.
 4. ORDER: Sequential integer from 1 onwards.
 
 Script:

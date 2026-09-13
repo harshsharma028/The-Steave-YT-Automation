@@ -14,7 +14,7 @@ from prompt_generator import generate_image_prompt
 from image_generator import generate_image
 from video_stitcher import create_video
 from utils import create_project_folder, setup_logger, slugify
-from config import OUTPUT_DIR, USD_TO_INR_RATE
+from config import OUTPUT_DIR, USD_TO_INR_RATE, IMAGE_PROVIDER
 
 
 logger = setup_logger("MainPipeline")
@@ -187,14 +187,14 @@ def run_interactive_pipeline(input_path, video_format="long form"):
     # Determine if any images are ungenerated
     has_ungenerated = any(not seg.get("image_generated") for seg in state["segments"])
     manual_verify = True
-    image_provider = state.get("image_provider", "gemini")
+    image_provider = state.get("image_provider", IMAGE_PROVIDER)
 
     if has_ungenerated:
         manual_verify = input("\nManually verify prompts? (yes/no): ").strip().lower() in ['yes', 'y']
 
-        # Select image provider (Gemini is faster, Fal has more models)
-        prov_choice = input("Provider (gemini/fal) [default: gemini]: ").strip().lower()
-        image_provider = "fal" if "fal" in prov_choice else "gemini"
+        # Fal.ai is the default; Gemini needs billing enabled to work at all
+        prov_choice = input("Provider (fal/gemini) [default: fal]: ").strip().lower()
+        image_provider = "gemini" if "gemini" in prov_choice else "fal"
         state["image_provider"] = image_provider
         save_state(state_path, state)
     

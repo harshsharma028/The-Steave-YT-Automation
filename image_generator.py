@@ -4,7 +4,7 @@ import os
 import requests
 from google import genai
 from google.genai import types
-from config import IMAGE_API_KEY, MASTER_STYLE_PROMPT, IMAGE_COST_PER_1M_TOKENS_USD, IMAGE_TOKENS_PER_IMAGE_1K, IMAGE_MODEL, FAL_MODEL, USD_TO_INR_RATE
+from config import IMAGE_API_KEY, MASTER_STYLE_PROMPT, IMAGE_COST_PER_1M_TOKENS_USD, IMAGE_TOKENS_PER_IMAGE_1K, IMAGE_MODEL, FAL_MODEL, USD_TO_INR_RATE, IMAGE_PROVIDER
 from utils import setup_logger
 
 logger = setup_logger("ImageGenerator")
@@ -18,7 +18,7 @@ except ImportError:
     fal_client = None
 
 
-def generate_image(scene_description, output_path, result_container=None, verbose=True, aspect_ratio="16:9", provider="gemini"):
+def generate_image(scene_description, output_path, result_container=None, verbose=True, aspect_ratio="16:9", provider=None):
     """
     Generates image via Gemini or Fal.ai with retry & cost tracking.
     - Applies Master Style Prompt for consistent 2D cartoon look
@@ -27,7 +27,7 @@ def generate_image(scene_description, output_path, result_container=None, verbos
     - Appends to result_container if provided (for threading)
     """
     full_prompt = MASTER_STYLE_PROMPT.format(scene_description=scene_description)
-    provider_name = provider.lower().strip() if provider else "gemini"
+    provider_name = (provider or IMAGE_PROVIDER).lower().strip()
 
     if provider_name == "fal":
         if fal_client is None:

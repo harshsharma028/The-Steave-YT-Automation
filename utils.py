@@ -4,6 +4,14 @@ import datetime
 import logging
 import sys
 
+# Emoji in log messages crashes Windows' default cp1252 stdout whenever output
+# isn't a real console (piped, redirected, scheduled runs). Force UTF-8 once,
+# here, so every entry point into the pipeline is covered.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+
 def setup_logger(name):
     """
     Setup dual logging: console (clean) + file (detailed).
@@ -41,14 +49,23 @@ def slugify(text):
 
 def create_project_folder(script_title, base_dir="projects", video_format="long form"):
     """
-    Create timestamped project folder: base/format/date/title_timestamp/
+    Create project folder: base/format/day_month_ProjectName/
+    Example: projects/long form video/13_9_History_Weirdest_Laws/
     Returns the full path to the project directory.
     """
     format_dir = "short form video" if video_format == "short form" else "long form video"
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = f"{slugify(script_title)}_{timestamp}"
-    path = os.path.join(base_dir, format_dir, today, folder_name)
-    os.makedirs(path, exist_ok=True)
-    return path
+    now = datetime.datetime.now()
+    date_prefix = f"{now.day}_{now.month}"
+    folder_name = f"{date_prefix}_{slugify(script_title)}"
+    path = os.path.join(base_dir, format_dir, folder_name)
+
+    # Avoid collisions if the same title is created twice on the same day
+    final_path = path
+    suffix = 2
+    while os.path.exists(final_path):
+        final_path = f"{path}_{suffix}"
+        suffix += 1
+
+    os.makedirs(final_path, exist_ok=True)
+    return final_path
 

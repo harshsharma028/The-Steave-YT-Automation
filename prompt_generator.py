@@ -17,19 +17,29 @@ def generate_image_prompt(chunk_text, chunk_index, project_folder):
     """
     logger.info(f"🎬 Generating visual prompts for segment {chunk_index + 1}...")
 
-    prompt = f"""For each scene, describe ONE complete visual moment (not isolated objects).
+    prompt = f"""You are the art director for a premium explainer channel.
+For each scene, describe ONE complete visual moment that carries the idea.
+
+The house style is flat vector editorial illustration on a deep navy ground with
+warm amber highlights — closer to a science documentary title sequence than a
+cartoon. People appear only as simple anonymous geometric figures, readable
+through posture and scale, never through facial expression.
 
 Describe:
-- What the character is doing
-- What the character is feeling
-- Where the scene takes place
-- Interesting visual details
-- What makes the moment memorable
+- The single idea the image must land
+- The setting or system being shown, with a clear focal point
+- Scale relationships and what dominates the frame
+- Where the light and warm accent falls
+- What makes the composition memorable
 
-Think like an animation director. The viewer should feel like they're watching a story frame.
+Each image is held on screen for several seconds with a slow camera push, so
+favour compositions with depth and a strong silhouette that reward a long look.
 
-PREFER: Characters interacting, discovering, reacting naturally, interesting environments, visual humor
-AVOID: Characters standing still, floating objects, diagrams, thumbnails, extreme exaggeration
+PREFER: conceptual scenes, systems made visible, striking scale contrast,
+strong silhouettes, generous negative space, one clear subject
+AVOID: text/letters/numbers of any kind, facial expressions, stick figures,
+cartoon gags, cluttered dashboards, floating disconnected objects,
+white backgrounds, anything resembling a clickbait thumbnail
 
 Script chunk:
 "{chunk_text}"
