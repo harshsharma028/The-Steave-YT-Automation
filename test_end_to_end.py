@@ -70,13 +70,9 @@ except Exception as e:
 print("\n[PHASE 4] Thumbnail Generation")
 print("-" * 70)
 try:
-    from thumbnail_generator import ThumbnailGenerator
-    from thumbnail_text_overlay import ThumbnailTextOverlay
-    from thumbnail_optimizer import ThumbnailOptimizer
+    from thumbnail import generate_thumbnail
 
-    print("  > Thumbnail generator module: OK")
-    print("  > Text overlay module: OK")
-    print("  > Thumbnail optimizer module: OK")
+    print("  > Thumbnail module: OK")
 
 except Exception as e:
     print(f"  ERROR: {e}")
