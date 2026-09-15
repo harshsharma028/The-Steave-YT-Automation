@@ -13,7 +13,7 @@ import importlib
 import os
 from dataclasses import dataclass
 
-DEFAULT_CHANNEL = "dark_psychology"
+DEFAULT_CHANNEL = "facts"
 
 
 @dataclass(frozen=True)

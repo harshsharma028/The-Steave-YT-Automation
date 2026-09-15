@@ -23,6 +23,13 @@ FAL_KEY = os.getenv("FAL_KEY", "")
 # and this account's free tier grants zero quota for gemini-3.1-flash-image.
 IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "fal")
 
+# Background music. Any track dropped in MUSIC_DIR can be used; the bed is
+# looped to the length of the narration, ducked well underneath it, and faded.
+# Narration must stay dominant, hence the low default gain.
+MUSIC_DIR = os.getenv("MUSIC_DIR", "assets/music")
+MUSIC_VOLUME = float(os.getenv("MUSIC_VOLUME", "0.14"))
+MUSIC_FADE = 1.5  # seconds of fade in/out
+
 # Shorts-only mode. The long-form path is fully intact and re-enabled by
 # setting SHORTS_ONLY=false; it is simply not offered while this is on.
 SHORTS_ONLY = os.getenv("SHORTS_ONLY", "true").strip().lower() not in ("false", "0", "no")

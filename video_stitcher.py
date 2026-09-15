@@ -1,9 +1,11 @@
 import os
+import random
 import shutil
 import subprocess
 from config import (
     VIDEO_FPS, VIDEO_WIDTH, VIDEO_HEIGHT,
     VIDEO_PRESET, VIDEO_CRF, KEN_BURNS_ZOOM, TRANSITION_DURATION, EDGE_TRIM,
+    MUSIC_DIR, MUSIC_VOLUME, MUSIC_FADE,
 )
 from utils import setup_logger
 
@@ -60,6 +62,19 @@ def _ken_burns(index, num_frames):
     return patterns[index % len(patterns)]
 
 
+def pick_music_bed():
+    """
+    Return a music file to use as a bed, or None when the folder is empty.
+    """
+    if not os.path.isdir(MUSIC_DIR):
+        return None
+    tracks = sorted(
+        os.path.join(MUSIC_DIR, f) for f in os.listdir(MUSIC_DIR)
+        if f.lower().endswith((".wav", ".mp3", ".m4a", ".ogg"))
+    )
+    return random.choice(tracks) if tracks else None
+
+
 def _render_shot(image_path, out_path, duration, index, width, height,
                  scale_res, trim, video_format):
     """
@@ -114,7 +129,7 @@ def _render_shot(image_path, out_path, duration, index, width, height,
         return False
 
 
-def create_video(project_folder, segments, audio_path, subtitle_path, output_path, include_audio=True, include_captions=True, video_format="long form"):
+def create_video(project_folder, segments, audio_path, subtitle_path, output_path, include_audio=True, include_captions=True, video_format="long form", music_path=None):
     """
     Stitch images + audio + subtitles → MP4 via FFmpeg.
     Each image gets slow Ken Burns motion, shots are crossfaded together.
@@ -195,6 +210,13 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
     input_args.extend(["-i", audio_path])
     audio_idx = len(shot_paths)
 
+    # Loop the bed so a short track still covers a long narration; ffmpeg cuts
+    # it to length via the amix `duration=first` below.
+    music_idx = None
+    if include_audio and music_path and os.path.exists(music_path):
+        input_args.extend(["-stream_loop", "-1", "-i", music_path])
+        music_idx = audio_idx + 1
+
     filter_complex = []
     if transition > 0 and len(shot_paths) > 1:
         running = seg_durations[0]
@@ -233,11 +255,23 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
     else:
         video_map = "[v_concat]"
 
-    audio_args = (
-        ["-map", f"{audio_idx}:a", "-c:a", "aac", "-b:a", "192k"]
-        if include_audio
-        else ["-an"]
-    )
+    if not include_audio:
+        audio_args = ["-an"]
+    elif music_idx is not None:
+        total = get_audio_duration(audio_path)
+        # Narration at full level, bed well under it and faded at both ends.
+        filter_complex.append(
+            f"[{music_idx}:a]volume={MUSIC_VOLUME},"
+            f"afade=t=in:st=0:d={MUSIC_FADE},"
+            f"afade=t=out:st={max(total - MUSIC_FADE, 0):.2f}:d={MUSIC_FADE}[bed];"
+            # normalize=0 is essential: amix otherwise divides every input by the
+            # input count, so adding a bed would quietly drop the narration 6dB.
+            f"[{audio_idx}:a][bed]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a_mix];"
+        )
+        audio_args = ["-map", "[a_mix]", "-c:a", "aac", "-b:a", "192k"]
+        logger.info(f"🎵 Music bed: {os.path.basename(music_path)} at {int(MUSIC_VOLUME * 100)}%")
+    else:
+        audio_args = ["-map", f"{audio_idx}:a", "-c:a", "aac", "-b:a", "192k"]
 
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "error",

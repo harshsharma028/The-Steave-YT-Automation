@@ -12,7 +12,7 @@ from audio_generator import generate_audio
 from subtitle_generator import generate_subtitles
 from prompt_generator import generate_image_prompt
 from image_generator import generate_image
-from video_stitcher import create_video
+from video_stitcher import create_video, pick_music_bed
 from thumbnail import generate_thumbnail
 from utils import create_project_folder, setup_logger, slugify
 from config import OUTPUT_DIR, USD_TO_INR_RATE, IMAGE_PROVIDER, SHORTS_ONLY, DEFAULT_VIDEO_FORMAT
@@ -367,6 +367,12 @@ def run_interactive_pipeline(input_path, video_format=None):
             add_audio = input("Add voiceover? (yes/no): ").strip().lower() in ['yes', 'y']
             add_captions = input("Add subtitles? (yes/no): ").strip().lower() in ['yes', 'y']
 
+            music_path = None
+            bed = pick_music_bed()
+            if bed and add_audio:
+                if input(f"Add background music ({os.path.basename(bed)})? (yes/no): ").strip().lower() in ['yes', 'y']:
+                    music_path = bed
+
             output_video_path = os.path.join(project_folder, "final_video.mp4")
             if create_video(
                 project_folder,
@@ -376,7 +382,8 @@ def run_interactive_pipeline(input_path, video_format=None):
                 output_video_path,
                 include_audio=add_audio,
                 include_captions=add_captions,
-                video_format=video_format
+                video_format=video_format,
+                music_path=music_path
             ):
                 state["video_generated"] = True
                 save_state(state_path, state)

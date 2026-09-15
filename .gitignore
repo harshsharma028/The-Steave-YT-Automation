@@ -49,3 +49,7 @@ Thumbs.db
 *.njsproj
 *.sln
 *.swp
+
+# Downloaded/generated music beds (large binaries)
+assets/music/*.wav
+assets/music/*.mp3
