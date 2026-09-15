@@ -57,13 +57,16 @@ history at commit `517dac9` if it is ever wanted back.
 
 ## Shared production settings
 
-- **Pacing:** each script chunk becomes 2–4 scenes. A shot held beyond ~8
-  seconds loses the viewer; long form lands near 7s/shot, shorts near 3.5s.
+- **Pacing:** each script chunk becomes 2–4 scenes, landing near 3.5s per shot.
+  A shot held beyond ~8 seconds loses the viewer. Aim scripts at roughly
+  100–170 words, which is about 40–60 seconds of narration.
 - **Motion:** slow Ken Burns, direction alternating, 0.4s crossfades, shot
   lengths padded so video still matches the master audio exactly.
-- **Format:** answer `short form` at the format prompt for 1080×1920. Images
-  generate natively at 9:16; landscape art reused in a vertical video instead
-  sits over a blurred enlargement of itself so nothing is cropped or stretched.
+- **Format: shorts only.** The pipeline runs in `SHORTS_ONLY` mode, so every
+  video is 1080×1920 and the format question is not asked. Images generate
+  natively at 9:16. The long-form path is intact and returns with
+  `SHORTS_ONLY=false`; landscape art reused in a vertical video sits over a
+  blurred enlargement of itself so nothing is cropped or stretched.
 - **Thumbnail:** optional, offered after the video is stitched. One image,
   1280×720, JPEG under 2MB, no text. Composed deliberately bolder than a video
   frame — a thumbnail competes at ~120px in a grid, so the subject is large and

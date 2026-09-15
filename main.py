@@ -15,7 +15,7 @@ from image_generator import generate_image
 from video_stitcher import create_video
 from thumbnail import generate_thumbnail
 from utils import create_project_folder, setup_logger, slugify
-from config import OUTPUT_DIR, USD_TO_INR_RATE, IMAGE_PROVIDER
+from config import OUTPUT_DIR, USD_TO_INR_RATE, IMAGE_PROVIDER, SHORTS_ONLY, DEFAULT_VIDEO_FORMAT
 
 
 logger = setup_logger("MainPipeline")
@@ -30,7 +30,8 @@ def load_state(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def run_interactive_pipeline(input_path, video_format="long form"):
+def run_interactive_pipeline(input_path, video_format=None):
+    video_format = video_format or DEFAULT_VIDEO_FORMAT
     logger.info("\n===========================================")
     logger.info("   INTERACTIVE VIDEO GENERATION PIPELINE   ")
     logger.info("===========================================")
@@ -47,7 +48,7 @@ def run_interactive_pipeline(input_path, video_format="long form"):
         if os.path.exists(state_path):
             logger.info(f"📂 Resuming: {project_folder}")
             state = load_state(state_path)
-            video_format = state.get("video_format", "long form")
+            video_format = state.get("video_format", DEFAULT_VIDEO_FORMAT)
         else:
             logger.error("❌ No blueprint.json found in folder")
             return
@@ -412,11 +413,16 @@ if __name__ == "__main__":
     choice = input("\nEnter your choice (1 or 2): ").strip()
     
     if choice == '1':
-        format_choice = input("\nEnter video format (long form / short form) [default: long form]: ").strip().lower()
-        if "short" in format_choice or format_choice == "s":
+        if SHORTS_ONLY:
+            # Shorts-only mode: don't ask, don't offer long form.
             video_format = "short form"
+            print("\nFormat: short form (9:16)")
         else:
-            video_format = "long form"
+            format_choice = input("\nEnter video format (long form / short form) [default: long form]: ").strip().lower()
+            if "short" in format_choice or format_choice == "s":
+                video_format = "short form"
+            else:
+                video_format = "long form"
 
         has_blueprint = input("\nDo you have a video blueprint? (yes/no): ").strip().lower() in ['yes', 'y']
         

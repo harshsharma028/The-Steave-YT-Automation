@@ -23,6 +23,11 @@ FAL_KEY = os.getenv("FAL_KEY", "")
 # and this account's free tier grants zero quota for gemini-3.1-flash-image.
 IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "fal")
 
+# Shorts-only mode. The long-form path is fully intact and re-enabled by
+# setting SHORTS_ONLY=false; it is simply not offered while this is on.
+SHORTS_ONLY = os.getenv("SHORTS_ONLY", "true").strip().lower() not in ("false", "0", "no")
+DEFAULT_VIDEO_FORMAT = "short form" if SHORTS_ONLY else "long form"
+
 # FFmpeg settings
 VIDEO_FPS = 30
 VIDEO_WIDTH = 1920
