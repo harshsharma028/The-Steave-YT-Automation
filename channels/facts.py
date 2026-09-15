@@ -54,8 +54,11 @@ VISUAL LANGUAGE:
 COMPOSITION:
 - FULL BLEED: the scene reaches all four edges and corners. No borders, frames,
   panel outlines, paper margins, angled splits or blank caption strips.
-- Built for VERTICAL 9:16: the subject sits in the upper two thirds, and the
-  lower third stays visually calm because captions live there
+- Built for VERTICAL 9:16. The artwork must fill the WHOLE tall frame, top edge
+  to bottom edge — background, ground, atmosphere and glow all continue to the
+  very bottom. Never leave the lower part of the frame as empty flat background.
+  Place the main subject in the upper two thirds and keep the lower third free
+  of competing detail, because captions sit there — uncluttered, but never blank.
 - Must read instantly at phone size: big shapes, strong silhouette, high contrast
 
 STRICTLY AVOID:

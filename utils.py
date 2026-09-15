@@ -80,7 +80,12 @@ def classify_api_error(exc):
         return False, 0, f"rate limited, retry in {wait}s"
 
     if "503" in text or "504" in text:
-        return True, 5, "API unavailable"
+        # A model can be overloaded for a sustained stretch, and no amount of
+        # retrying inside one run gets past that — another model usually is up.
+        return True, 10, (
+            "model overloaded (503) — if this keeps failing, point TEXT_MODEL "
+            "at another model"
+        )
 
     return False, 0, text[:120]
 

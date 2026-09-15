@@ -8,7 +8,7 @@ load_dotenv()
 CHAT_API_KEY = os.getenv("CHAT_API_KEY")
 IMAGE_API_KEY = os.getenv("IMAGE_API_KEY")
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "gemini-3.1-flash-image")
-TEXT_MODEL = os.getenv("TEXT_MODEL", "gemini-3.1-flash-lite")
+TEXT_MODEL = os.getenv("TEXT_MODEL", "gemini-flash-lite-latest")
 # Active channel profile. Override per run with CHANNEL=weird_history.
 ACTIVE_CHANNEL = load_channel()
 
