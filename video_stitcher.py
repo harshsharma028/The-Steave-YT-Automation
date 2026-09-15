@@ -1,5 +1,4 @@
 import os
-import random
 import shutil
 import subprocess
 from config import (
@@ -62,17 +61,20 @@ def _ken_burns(index, num_frames):
     return patterns[index % len(patterns)]
 
 
-def pick_music_bed():
+def list_music_beds():
     """
-    Return a music file to use as a bed, or None when the folder is empty.
+    Return the available music beds, sorted. Empty list when there are none.
+
+    Beds differ in tone — driving, playful, eerie — so the caller picks one to
+    match the video. Choosing at random would eventually score a grim fact with
+    comedy music.
     """
     if not os.path.isdir(MUSIC_DIR):
-        return None
-    tracks = sorted(
+        return []
+    return sorted(
         os.path.join(MUSIC_DIR, f) for f in os.listdir(MUSIC_DIR)
         if f.lower().endswith((".wav", ".mp3", ".m4a", ".ogg"))
     )
-    return random.choice(tracks) if tracks else None
 
 
 def _render_shot(image_path, out_path, duration, index, width, height,

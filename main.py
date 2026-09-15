@@ -12,7 +12,7 @@ from audio_generator import generate_audio
 from subtitle_generator import generate_subtitles
 from prompt_generator import generate_image_prompt
 from image_generator import generate_image
-from video_stitcher import create_video, pick_music_bed
+from video_stitcher import create_video, list_music_beds
 from thumbnail import generate_thumbnail
 from utils import create_project_folder, setup_logger, slugify
 from config import OUTPUT_DIR, USD_TO_INR_RATE, IMAGE_PROVIDER, SHORTS_ONLY, DEFAULT_VIDEO_FORMAT
@@ -368,10 +368,15 @@ def run_interactive_pipeline(input_path, video_format=None):
             add_captions = input("Add subtitles? (yes/no): ").strip().lower() in ['yes', 'y']
 
             music_path = None
-            bed = pick_music_bed()
-            if bed and add_audio:
-                if input(f"Add background music ({os.path.basename(bed)})? (yes/no): ").strip().lower() in ['yes', 'y']:
-                    music_path = bed
+            beds = list_music_beds()
+            if beds and add_audio:
+                print("\nBackground music:")
+                print("  0. none")
+                for n, b in enumerate(beds, 1):
+                    print(f"  {n}. {os.path.splitext(os.path.basename(b))[0]}")
+                pick = input(f"Choose a track (0-{len(beds)}) [default: 0]: ").strip()
+                if pick.isdigit() and 1 <= int(pick) <= len(beds):
+                    music_path = beds[int(pick) - 1]
 
             output_video_path = os.path.join(project_folder, "final_video.mp4")
             if create_video(
