@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 from config import (
     VIDEO_FPS, VIDEO_WIDTH, VIDEO_HEIGHT,
@@ -59,6 +60,60 @@ def _ken_burns(index, num_frames):
     return patterns[index % len(patterns)]
 
 
+def _render_shot(image_path, out_path, duration, index, width, height,
+                 scale_res, trim, video_format):
+    """
+    Render one still into a short clip with Ken Burns motion.
+    """
+    num_frames = max(int(duration * VIDEO_FPS), 1)
+    z_expr, x_expr, y_expr = _ken_burns(index, num_frames)
+    motion = (
+        f"zoompan=z='{z_expr}':x='{x_expr}':y='{y_expr}':"
+        f"d={num_frames}:s={width}x{height}:fps={VIDEO_FPS},setsar=1/1"
+    )
+
+    size = get_image_size(image_path)
+    source_is_landscape = bool(size) and size[0] > size[1] * 1.2
+
+    if video_format == "short form" and source_is_landscape:
+        # Landscape art reused in a vertical video. Cropping to 9:16 would cut
+        # the subject out of frame and stretching would distort it, so the whole
+        # picture sits over a blurred enlargement of itself. Art generated at
+        # 9:16 skips this and fills the frame.
+        work_w, work_h = width * 3 // 2, height * 3 // 2
+        graph = (
+            f"[0:v]split=2[a][b];"
+            f"[a]scale={work_w}:{work_h}:force_original_aspect_ratio=increase,"
+            f"crop={work_w}:{work_h},boxblur=30:2,eq=brightness=-0.18[bg];"
+            f"[b]{trim},scale={work_w}:-2[fg];"
+            f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1/1[c];"
+            f"[c]{motion}[out]"
+        )
+    else:
+        # Scale to cover rather than to fixed dimensions, so an image whose
+        # aspect differs slightly from the target is cropped, never squashed.
+        graph = (
+            f"[0:v]scale={scale_res}:force_original_aspect_ratio=increase,"
+            f"crop={scale_res},{trim},{motion}[out]"
+        )
+
+    cmd = [
+        "ffmpeg", "-hide_banner", "-loglevel", "error",
+        "-i", image_path,
+        "-filter_complex", graph,
+        "-map", "[out]", "-frames:v", str(num_frames),
+        # Intermediate only; crf 16 keeps generation loss invisible in the join.
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "16",
+        "-pix_fmt", "yuv420p", "-an", "-y", out_path,
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        logger.error(f"❌ Shot render failed: {(e.stderr or '').strip()[-400:]}")
+        return False
+
+
 def create_video(project_folder, segments, audio_path, subtitle_path, output_path, include_audio=True, include_captions=True, video_format="long form"):
     """
     Stitch images + audio + subtitles → MP4 via FFmpeg.
@@ -73,34 +128,24 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
         logger.error("❌ Audio duration is 0")
         return False
 
-    # Collect image inputs for FFmpeg
-    input_args = []
+    # Collect source images
     image_paths = []
-
     for i, segment in enumerate(segments):
         expected = segment.get("image_filename", f"segment_{i:03d}.png")
         img_path = os.path.join(project_folder, expected)
-
-        # Fallback: try .jpg if .png doesn't exist
         if not os.path.exists(img_path):
             img_path = os.path.join(project_folder, expected.replace(".png", ".jpg"))
-
-        if os.path.exists(img_path):
-            input_args.extend(["-i", img_path])
-            image_paths.append(img_path)
-        else:
+        if not os.path.exists(img_path):
             logger.error(f"❌ Missing image: {expected}")
             return False
+        image_paths.append(img_path)
 
-    # Add audio input
-    input_args.extend(["-i", audio_path])
-    audio_idx = len(image_paths)
-
-    # Set resolution based on format
+    # Working resolution for the motion pass. 1.33x the output is ample
+    # headroom for a 1.12x zoom without wasting memory on 4K buffers.
     if video_format == "short form":
-        width, height, scale_res = 1080, 1920, "2160:3840"  # 9:16
+        width, height, scale_res = 1080, 1920, "1440:2560"  # 9:16
     else:
-        width, height, scale_res = VIDEO_WIDTH, VIDEO_HEIGHT, "3840:2160"  # 16:9
+        width, height, scale_res = VIDEO_WIDTH, VIDEO_HEIGHT, "2560:1440"  # 16:9
 
     # Measure every segment first so transition length can be made safe
     seg_durations = []
@@ -120,65 +165,52 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
     else:
         transition = 0.0
 
-    filter_complex = []
-
-    # The retro print style keeps drawing a paper margin around the artwork
-    # however firmly the prompt forbids it, so trim the outer edge here rather
-    # than relying on the image model to behave.
     trim = f"crop=iw*{1 - 2 * EDGE_TRIM}:ih*{1 - 2 * EDGE_TRIM}"
+
+    # PASS 1 — render each shot on its own.
+    # Rendering all shots in a single filter graph keeps every image decoded and
+    # every crossfade buffered at once, which exhausted memory on a three-minute
+    # video. One shot at a time keeps peak memory flat regardless of length.
+    shots_dir = os.path.join(project_folder, "_shots")
+    os.makedirs(shots_dir, exist_ok=True)
+    shot_paths = []
 
     for i, seg_dur in enumerate(seg_durations):
         padded_dur = seg_dur + (transition if i > 0 else 0.0)
-        num_frames = max(int(padded_dur * VIDEO_FPS), 1)
-        z_expr, x_expr, y_expr = _ken_burns(i, num_frames)
-        motion = (
-            f"zoompan=z='{z_expr}':x='{x_expr}':y='{y_expr}':"
-            f"d={num_frames}:s={width}x{height}:fps={VIDEO_FPS},"
-            f"setsar=1/1,setpts=PTS-STARTPTS"
-        )
+        shot_path = os.path.join(shots_dir, f"shot_{i:03d}.mp4")
 
-        size = get_image_size(image_paths[i])
-        source_is_landscape = bool(size) and size[0] > size[1] * 1.2
+        # Reuse a shot already rendered, so an interrupted stitch can resume.
+        if not os.path.exists(shot_path):
+            if not _render_shot(image_paths[i], shot_path, padded_dur, i,
+                                width, height, scale_res, trim, video_format):
+                logger.error(f"❌ Failed rendering shot {i + 1}")
+                return False
+            logger.info(f"  shot {i + 1}/{len(seg_durations)}")
+        shot_paths.append(shot_path)
 
-        if video_format == "short form" and source_is_landscape:
-            # Landscape art reused in a vertical video. Cropping it to 9:16
-            # would cut the joke out of frame and stretching it would distort
-            # everything, so the whole picture sits over a blurred enlargement
-            # of itself. Art generated at 9:16 skips this and fills the frame.
-            work_w, work_h = width * 3 // 2, height * 3 // 2
-            filter_complex.append(
-                f"[{i}:v]split=2[a{i}][b{i}];"
-                f"[a{i}]scale={work_w}:{work_h}:force_original_aspect_ratio=increase,"
-                f"crop={work_w}:{work_h},boxblur=30:2,eq=brightness=-0.18[bg{i}];"
-                f"[b{i}]{trim},scale={work_w}:-2[fg{i}];"
-                f"[bg{i}][fg{i}]overlay=(W-w)/2:(H-h)/2,setsar=1/1[c{i}];"
-                f"[c{i}]{motion}[v{i}];"
-            )
-        else:
-            # Scale to cover rather than to fixed dimensions, so an image whose
-            # aspect differs slightly from the target is cropped, never squashed.
-            filter_complex.append(
-                f"[{i}:v]scale={scale_res}:force_original_aspect_ratio=increase,"
-                f"crop={scale_res},{trim},{motion}[v{i}];"
-            )
+    # PASS 2 — join the shots, lay in audio and burn subtitles.
+    input_args = []
+    for path in shot_paths:
+        input_args.extend(["-i", path])
+    input_args.extend(["-i", audio_path])
+    audio_idx = len(shot_paths)
 
-    # Chain the shots together with crossfades
-    if transition > 0:
+    filter_complex = []
+    if transition > 0 and len(shot_paths) > 1:
         running = seg_durations[0]
-        current = "[v0]"
-        for i in range(1, len(seg_durations)):
+        current = "[0:v]"
+        for i in range(1, len(shot_paths)):
             offset = running - transition
-            label = "[v_concat]" if i == len(seg_durations) - 1 else f"[x{i}]"
+            label = "[v_concat]" if i == len(shot_paths) - 1 else f"[x{i}]"
             filter_complex.append(
-                f"{current}[v{i}]xfade=transition=fade:"
+                f"{current}[{i}:v]xfade=transition=fade:"
                 f"duration={transition:.3f}:offset={offset:.3f}{label};"
             )
             current = label
             running = running + (seg_durations[i] + transition) - transition
     else:
-        filter_complex.append(f"[v0]copy[v_concat];")
+        filter_complex.append("[0:v]copy[v_concat];")
 
-    # Add subtitles (if requested)
     if include_captions:
         sub_path_esc = subtitle_path.replace("\\", "/").replace(":", "\\:")
 
@@ -187,13 +219,11 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
         # are therefore much smaller than the pixel values they produce, and are
         # not interchangeable between the two formats.
         if video_format == "short form":
-            # Short-form: amber, parked above the app's UI chrome
             style = (
                 "force_style='FontName=Arial Black,FontSize=13,Bold=1,PrimaryColour=&H0023A6F5&,"
                 "OutlineColour=&H00101010&,BorderStyle=1,Outline=5,Shadow=0,Alignment=2,MarginV=95'"
             )
         else:
-            # Long-form: clean white, sits in the calm lower fifth of the frame
             style = (
                 "force_style='FontName=Arial Black,FontSize=18,Bold=1,PrimaryColour=&H00F7F3E9&,"
                 "OutlineColour=&H00101010&,BorderStyle=1,Outline=4,Shadow=0,Alignment=2,MarginV=22'"
@@ -203,14 +233,12 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
     else:
         video_map = "[v_concat]"
 
-    # Configure audio (if requested)
     audio_args = (
         ["-map", f"{audio_idx}:a", "-c:a", "aac", "-b:a", "192k"]
         if include_audio
         else ["-an"]
     )
 
-    # Build FFmpeg command
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "error",
         *input_args,
@@ -224,8 +252,10 @@ def create_video(project_folder, segments, audio_path, subtitle_path, output_pat
     logger.info(f"🎥 FFmpeg encoding → {output_path}")
     try:
         subprocess.run(cmd, check=True, capture_output=True, text=True)
-        logger.info(f"✓ Video created: {output_path}")
-        return True
     except subprocess.CalledProcessError as e:
         logger.error(f"❌ FFmpeg failed: {(e.stderr or '').strip()[-600:]}")
         return False
+
+    shutil.rmtree(shots_dir, ignore_errors=True)
+    logger.info(f"✓ Video created: {output_path}")
+    return True
