@@ -19,84 +19,76 @@ CHANNEL = Channel(
     rate="+12%",
 
     style_prompt="""
-ABSOLUTE RULE, APPLIES BEFORE EVERYTHING ELSE: render NO text of any kind.
-No letters, words, numbers, signage, logos, labels or watermarks. Anything that
-would normally carry writing is drawn blank and smooth. Text in the image is a
-failed render.
+Photorealistic cinematic film still, full-bleed vertical composition filling the
+entire frame. Believable photographed imagery, not illustration — a facts video
+carries more weight when the picture looks real.
 
-Bold high-contrast graphic poster illustration. Punchy, cinematic and loud —
-the visual language of a striking magazine cover. Every image is built to stop a
-thumb mid-scroll.
-
-COLOR PALETTE (use these and only these — this is the channel's brand):
-- Deep ink near-black (#0D1014) as the ground
-- Electric cyan (#1FD1F9) as the primary light and glow
-- Hot magenta-red (#FF2E63) as the secondary accent and point of drama
-- Bright bone white (#F5F7FA) for highlights and key shapes
-- Warm amber (#FFC93C) used sparingly for emphasis
-High saturation, hard contrast, strong rim lighting against darkness. Never
-pastel, never washed out, never a white background.
+LIGHT AND GRADE (this is the channel's brand — hold it in every image):
+- A dramatic single-source key light picks the subject out in warm amber
+- It sits against a cool, deep teal-blue darkness
+- Heavy atmospheric haze, dust or water in the air giving real depth
+- Strong contrast with rich inky shadows, shallow depth of field, subtle film grain
+- Moody prestige documentary colour grade
+The subject is always the warm, lit thing in a cool dark world. That single
+relationship is what makes a desert scene and an underwater scene read as the
+same channel.
 
 SUBJECT:
-- ONE subject, large and central, lit hard against a dark field
+- ONE subject, large in frame and clearly lit
 - Dramatic scale: make the surprising thing enormous or tiny, whichever sells it
-- People appear as bold silhouettes or simplified figures with obscured faces
-- Objects, animals and places are drawn graphic and stylised, never photoreal
-
-VISUAL LANGUAGE:
-- Flat graphic shapes with crisp edges, bold blocks of colour
-- Strong directional light, glow and rim light doing the dramatic work
-- Subtle grain; no glossy 3D renders, no photorealism
-- The tone flexes with the fact — playful, eerie or jaw-dropping — but the
-  palette and the hard-lit graphic treatment never change. That consistency is
-  what makes a frame recognisable as this channel.
+- Photographic realism in materials, anatomy, weathering and lighting
+- People are shown from behind, in silhouette, or at a distance — faces are not
+  the subject, and faces do not stay consistent between separately made images
 
 COMPOSITION:
-- FULL BLEED: the scene reaches all four edges and corners. No borders, frames,
-  panel outlines, paper margins, angled splits or blank caption strips.
-- Built for VERTICAL 9:16. The artwork must fill the WHOLE tall frame, top edge
-  to bottom edge — background, ground, atmosphere and glow all continue to the
-  very bottom. Never leave the lower part of the frame as empty flat background.
-  Place the main subject in the upper two thirds and keep the lower third free
-  of competing detail, because captions sit there — uncluttered, but never blank.
-- Must read instantly at phone size: big shapes, strong silhouette, high contrast
+- Built for VERTICAL 9:16. The photograph reaches all four edges: sky, ground,
+  water and haze all continue to the very bottom of the frame.
+- Main subject in the upper two thirds. The lower third stays free of competing
+  detail because captions sit there — quiet ground, water or haze, never an
+  empty flat void.
+- Must read instantly at phone size: one clear subject, strong silhouette,
+  hard separation between the lit subject and the dark surroundings.
 
-STRICTLY AVOID:
-- Any text, letters or numbers
-- Gore, wounds, corpses, blood, injury detail, real-world tragedy depicted
-  graphically. Unsettling is fine; grisly is not — it is a monetisation risk.
-- Cluttered collages, busy infographics, multiple competing subjects
-- Muted or washed-out colour, white backgrounds, stock-photo looks
+AVOID:
+- Text of any kind. Signs, screens and banners are shown blank and unlettered;
+  lettering renders as gibberish and gives the channel away.
+- Gore, wounds, corpses, blood, injury detail, or real-world tragedy shown
+  graphically. Dramatic and unsettling is right; grisly is a monetisation risk.
+- Flat vector or cartoon looks, neon graphic styling, glossy plastic 3D
+- Bright evenly-lit stock-photo scenes, white backgrounds, washed-out colour
+- Cluttered collages or several subjects competing for attention
+- Letterboxing, black bars, borders or framing devices of any kind
 """,
 
     script_persona="""You are a retention editor for a fast-paced facts channel.
 The tone is punchy and confident, and the pace never sags.""",
 
     art_director="""You are the art director for a fast-paced facts channel.
-For each scene, describe ONE bold image that sells the fact instantly.
+For each scene, describe ONE photograph that sells the fact instantly.
 
-The house style is high-contrast graphic poster art: deep ink background,
-electric cyan light, hot magenta-red accents, hard rim lighting. One large
-central subject, stylised and graphic, never photoreal. People appear as bold
-silhouettes with obscured faces.
+The house style is photorealistic cinematic imagery: a warm amber key light
+picking the subject out of a cool, deep teal-blue darkness, with haze or dust
+giving depth. Think a moody documentary still, not an illustration. People are
+shown from behind, in silhouette or at a distance.
 
 Describe:
-- The single fact the image has to land, as one striking picture
+- The single fact the image has to land, as one real photographed moment
 - The one subject that dominates the frame, and how big it is
-- Where the hard light falls and what glows
-- The scale contrast or visual surprise that sells it
-- Why someone scrolling would stop
+- Where the warm light falls and what stays in shadow
+- The atmosphere in the air: dust, haze, spray, smoke, water
+- The scale contrast or visual surprise that makes someone stop scrolling
 
-The video is VERTICAL, so compose tall: subject in the upper two thirds, lower
-third kept calm for captions. One idea per image — if a scene needs two things
-explained, make it two scenes.
+The video is VERTICAL, so compose tall: subject in the upper two thirds, with
+ground, water or haze continuing to the bottom edge so the lower third is quiet
+but never empty. One idea per image — if a scene needs two things explained,
+make it two scenes.
 
-Never describe gore, wounds, blood or graphic injury. Unsettling and dramatic
-is right; grisly is not.""",
+Never describe text, signage or lettering. Never describe gore, wounds, blood or
+graphic injury — dramatic and unsettling is right, grisly is not.""",
 
-    thumbnail_brief="""One bold, loud, instantly readable image on deep ink.
-A single subject filling a third to a half of the frame, hard-lit with electric
-cyan and a hot magenta accent, high contrast, strong silhouette. It competes in
-a grid at roughly 120 pixels wide, so bigger and bolder beats subtle every time.
-Nothing written anywhere.""",
+    thumbnail_brief="""One cinematic photographic image, instantly readable at
+roughly 120 pixels wide. A single subject filling a third to a half of the
+frame, picked out in warm amber light against cool deep darkness, heavy
+atmosphere, strong silhouette and hard contrast. Closer and bolder than a video
+frame — a thumbnail competes in a grid. Nothing written anywhere.""",
 )
